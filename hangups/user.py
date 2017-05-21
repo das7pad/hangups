@@ -36,7 +36,7 @@ class User(object):
             full_name = first_name = DEFAULT_NAME
             name_type = NameType.DEFAULT
         elif not any(c.isalpha() for c in full_name):
-            full_name = first_name = full_name
+            first_name = full_name
             name_type = NameType.NUMERIC
         else:
             full_name = full_name if full_name else DEFAULT_NAME
@@ -167,8 +167,8 @@ class UserList(object):
         try:
             return self._user_dict[user_id]
         except KeyError:
-            logger.warning('UserList returning unknown User for UserID {}'
-                           .format(user_id))
+            logger.warning('UserList returning unknown User for UserID %s',
+                           user_id)
             return User(user_id, None, None, None, [], False)
 
     def get_all(self):

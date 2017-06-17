@@ -79,6 +79,7 @@ message DeviceStatus {
 
 message LastSeen {
   optional uint64 last_seen_timestamp_usec = 1;
+  optional uint64 usec_since_last_seen = 2;
 }
 
 message Presence {
@@ -232,19 +233,16 @@ message PlusPhoto {
 
 // Place that can be embedded in a chat message via Google Maps.
 message Place {
-
-  // Representative image of a place.
-  message RepresentativeImage {
-    // URL of image.
-    optional string url = 2;
-  }
-
-  // Google Maps URL pointing to the map coordinates.
+  // Google Maps URL pointing to the place coordinates.
   optional string url = 1;
-  // Name of map location.
+  // Name of the place.
   optional string name = 3;
+  // Address of the place.
+  optional EmbedItem address = 24;
+  // Geographic location of the place.
+  optional EmbedItem geo = 25;
   // Representative image of the place (map with pin).
-  optional RepresentativeImage representative_image = 185;
+  optional EmbedItem representative_image = 185;
 }
 
 // An item of some type embedded in a chat message.
@@ -257,6 +255,23 @@ message EmbedItem {
   optional PlusPhoto plus_photo = 27639957;
   // Embedded Google Map of a place.
   optional Place place = 35825640;
+  // Embedded postal address.
+  optional PostalAddress postal_address = 36003298;
+  // Embedded geographical coordinates.
+  optional GeoCoordinates geo_coordinates = 36736749;
+  // Embedded image.
+  optional Image image = 40265033;
+
+  message PostalAddress {
+    optional string street_address = 35;
+  }
+  message GeoCoordinates {
+    optional double latitude = 36;
+    optional double longitude = 37;
+  }
+  message Image {
+    optional string url = 1;
+  }
 }
 
 // An attachment for a chat message.
@@ -1413,13 +1428,18 @@ message SearchEntitiesResponse {
   repeated Entity entity = 2;
 }
 
+message Location {
+  optional Place place = 1;
+}
+
 message SendChatMessageRequest {
   optional RequestHeader request_header = 1;
   repeated EventAnnotation annotation = 5;
   optional MessageContent message_content = 6;
   optional ExistingMedia existing_media = 7;
   optional EventRequestHeader event_request_header = 8;
-
+  optional ParticipantId user_id = 9;
+  optional Location location = 10;
   // TODO: incomplete
 }
 

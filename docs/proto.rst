@@ -67,6 +67,7 @@ LastSeen
 Field                            Number Type   Label    Description
 ================================ ====== ====== ======== ===========
 :code:`last_seen_timestamp_usec` 1      uint64 optional            
+:code:`usec_since_last_seen`     2      uint64 optional            
 ================================ ====== ====== ======== ===========
 
 Presence
@@ -209,38 +210,60 @@ Place
 
 Place that can be embedded in a chat message via Google Maps.
 
-============================ ====== ============================ ======== =================================================
-Field                        Number Type                         Label    Description                                      
-============================ ====== ============================ ======== =================================================
-:code:`url`                  1      string                       optional Google Maps URL pointing to the map coordinates. 
-:code:`name`                 3      string                       optional Name of map location.                            
-:code:`representative_image` 185    `Place.RepresentativeImage`_ optional Representative image of the place (map with pin).
-============================ ====== ============================ ======== =================================================
-
-Place.RepresentativeImage
--------------------------
-
-Representative image of a place.
-
-=========== ====== ====== ======== =============
-Field       Number Type   Label    Description  
-=========== ====== ====== ======== =============
-:code:`url` 2      string optional URL of image.
-=========== ====== ====== ======== =============
+============================ ====== ============ ======== ==================================================
+Field                        Number Type         Label    Description                                       
+============================ ====== ============ ======== ==================================================
+:code:`url`                  1      string       optional Google Maps URL pointing to the place coordinates.
+:code:`name`                 3      string       optional Name of the place.                                
+:code:`address`              24     `EmbedItem`_ optional Address of the place.                             
+:code:`geo`                  25     `EmbedItem`_ optional Geographic location of the place.                 
+:code:`representative_image` 185    `EmbedItem`_ optional Representative image of the place (map with pin). 
+============================ ====== ============ ======== ==================================================
 
 EmbedItem
 ---------
 
 An item of some type embedded in a chat message.
 
-================== ======== ============ ======== ================================================================
-Field              Number   Type         Label    Description                                                     
-================== ======== ============ ======== ================================================================
-:code:`type`       1        `ItemType`_  repeated List of embedded item types in this message.                    
-:code:`id`         2        string       optional For photos this is not given, for maps, it's the URL of the map.
-:code:`plus_photo` 27639957 `PlusPhoto`_ optional Embedded Google Plus photo.                                     
-:code:`place`      35825640 `Place`_     optional Embedded Google Map of a place.                                 
-================== ======== ============ ======== ================================================================
+======================= ======== =========================== ======== ================================================================
+Field                   Number   Type                        Label    Description                                                     
+======================= ======== =========================== ======== ================================================================
+:code:`type`            1        `ItemType`_                 repeated List of embedded item types in this message.                    
+:code:`id`              2        string                      optional For photos this is not given, for maps, it's the URL of the map.
+:code:`plus_photo`      27639957 `PlusPhoto`_                optional Embedded Google Plus photo.                                     
+:code:`place`           35825640 `Place`_                    optional Embedded Google Map of a place.                                 
+:code:`postal_address`  36003298 `EmbedItem.PostalAddress`_  optional Embedded postal address.                                        
+:code:`geo_coordinates` 36736749 `EmbedItem.GeoCoordinates`_ optional Embedded geographical coordinates.                              
+:code:`image`           40265033 `EmbedItem.Image`_          optional Embedded image.                                                 
+======================= ======== =========================== ======== ================================================================
+
+EmbedItem.PostalAddress
+-----------------------
+
+====================== ====== ====== ======== ===========
+Field                  Number Type   Label    Description
+====================== ====== ====== ======== ===========
+:code:`street_address` 35     string optional            
+====================== ====== ====== ======== ===========
+
+EmbedItem.GeoCoordinates
+------------------------
+
+================= ====== ====== ======== ===========
+Field             Number Type   Label    Description
+================= ====== ====== ======== ===========
+:code:`latitude`  36     double optional            
+:code:`longitude` 37     double optional            
+================= ====== ====== ======== ===========
+
+EmbedItem.Image
+---------------
+
+=========== ====== ====== ======== ===========
+Field       Number Type   Label    Description
+=========== ====== ====== ======== ===========
+:code:`url` 1      string optional            
+=========== ====== ====== ======== ===========
 
 Attachment
 ----------
@@ -1425,18 +1448,29 @@ Field                   Number Type              Label    Description
 :code:`entity`          2      `Entity`_         repeated            
 ======================= ====== ================= ======== ===========
 
+Location
+--------
+
+============= ====== ======== ======== ===========
+Field         Number Type     Label    Description
+============= ====== ======== ======== ===========
+:code:`place` 1      `Place`_ optional            
+============= ====== ======== ======== ===========
+
 SendChatMessageRequest
 ----------------------
 
-============================ ====== ===================== ======== ===========
-Field                        Number Type                  Label    Description
-============================ ====== ===================== ======== ===========
-:code:`request_header`       1      `RequestHeader`_      optional            
-:code:`annotation`           5      `EventAnnotation`_    repeated            
-:code:`message_content`      6      `MessageContent`_     optional            
-:code:`existing_media`       7      `ExistingMedia`_      optional            
-:code:`event_request_header` 8      `EventRequestHeader`_ optional            
-============================ ====== ===================== ======== ===========
+============================ ====== ===================== ======== ================
+Field                        Number Type                  Label    Description     
+============================ ====== ===================== ======== ================
+:code:`request_header`       1      `RequestHeader`_      optional                 
+:code:`annotation`           5      `EventAnnotation`_    repeated                 
+:code:`message_content`      6      `MessageContent`_     optional                 
+:code:`existing_media`       7      `ExistingMedia`_      optional                 
+:code:`event_request_header` 8      `EventRequestHeader`_ optional                 
+:code:`user_id`              9      `ParticipantId`_      optional                 
+:code:`location`             10     `Location`_           optional TODO: incomplete
+============================ ====== ===================== ======== ================
 
 SendChatMessageResponse
 -----------------------

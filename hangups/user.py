@@ -64,6 +64,15 @@ class User(object):
         self.is_self = is_self
         """Whether this user is the current user (:class:`bool`)."""
 
+    @property
+    def is_default(self):
+        """Check whether the user has a custom name
+
+        Returns:
+            boolean, True if the user has a custom name, otherwise False
+        """
+        return self.name_type == NameType.DEFAULT
+
     def upgrade_name(self, user_):
         """Upgrade name type of this user.
 

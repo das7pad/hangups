@@ -304,20 +304,23 @@ class Channel(object):
                 params=params, cookies=self._cookies, headers=headers,
                 connector=self._connector), CONNECT_TIMEOUT)
 
-            if res.status != 200:
-                if res.status == 400 and res.reason == 'Unknown SID':
-                    raise UnknownSIDError('SID became invalid')
-                raise exceptions.NetworkError(
-                    'Request return unexpected status: {}: {}'.format(
-                        res.status, res.reason))
+            try:
+                if res.status != 200:
+                    if res.status == 400 and res.reason == 'Unknown SID':
+                        raise UnknownSIDError('SID became invalid')
+                    raise exceptions.NetworkError(
+                        'Request return unexpected status: {}: {}'.format(
+                            res.status, res.reason))
 
-            while True:
-                chunk = yield from asyncio.wait_for(
-                    res.content.read(MAX_READ_BYTES), PUSH_TIMEOUT)
-                if not chunk:
-                    break
+                while True:
+                    chunk = yield from asyncio.wait_for(
+                        res.content.read(MAX_READ_BYTES), PUSH_TIMEOUT)
+                    if not chunk:
+                        break
 
-                yield from self._on_push_data(chunk)
+                    yield from self._on_push_data(chunk)
+            finally:
+                res.release()
 
         except asyncio.TimeoutError:
             raise exceptions.NetworkError('Request timed out')
@@ -326,9 +329,6 @@ class Channel(object):
                 'Server disconnected error: %s' % err)
         except aiohttp.ClientError as err:
             raise exceptions.NetworkError('Request connection error: %s' % err)
-        finally:
-            if 'res' in locals():
-                res.close()
 
     @asyncio.coroutine
     def _on_push_data(self, data_bytes):

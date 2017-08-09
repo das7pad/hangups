@@ -88,8 +88,8 @@ class User(object):
             self.full_name = user_.full_name
             self.first_name = user_.first_name
             self.name_type = user_.name_type
-            logger.debug('Added {} name to User "{}": {}'.format(
-                self.name_type.name.lower(), self.full_name, self))
+            logger.debug('Added %s name to User "%s": %s',
+                         self.name_type.name.lower(), self.full_name, self)
 
     @staticmethod
     def from_entity(entity, self_user_id):
@@ -158,8 +158,8 @@ class UserList(object):
         # only use them as a fallback.
         for participant in conv_parts:
             self._add_user_from_conv_part(participant)
-        logger.info('UserList initialized with {} user(s)'
-                    .format(len(self._user_dict)))
+        logger.info('UserList initialized with %s user(s)',
+                    len(self._user_dict))
 
         self._client.on_state_update.add_observer(self._on_state_update)
 

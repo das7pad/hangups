@@ -154,6 +154,15 @@ class Client(object):
         When disconnection is complete, :func:`connect` will return.
         """
         logger.info('Disconnecting gracefully...')
+
+        # catch a previous Exception
+        if (not self._listen_future.cancelled()
+                and self._listen_future.done()
+                and self._listen_future.exception() is not None):
+            logger.info('disconnect: channel already disconnected from %s',
+                        repr(self._listen_future.exception()))
+            return
+
         self._listen_future.cancel()
         try:
             yield from self._listen_future

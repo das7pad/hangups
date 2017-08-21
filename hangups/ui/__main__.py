@@ -612,6 +612,15 @@ class ConversationEventListWalker(urwid.ListWalker):
 
         self._conversation.on_event.add_observer(self._handle_event)
 
+    @property
+    def focus_position(self):
+        """Get the current view position in the events
+
+        Returns:
+            string, a conversation event id or .POSITION_LOADING
+        """
+        return self._focus_position
+
     def _handle_event(self, conv_event):
         """Handle updating and scrolling when a new event is added.
 
@@ -754,6 +763,10 @@ class ConversationWidget(WidgetBase):
         for event in self._conversation.events:
             self._on_event(event)
 
+        # Mark the newest event as read.
+        future = asyncio.async(self._conversation.update_read_timestamp())
+        future.add_done_callback(lambda future: future.result())
+
         super().__init__(self._widget)
 
     def get_menu_widget(self, close_callback):
@@ -766,9 +779,11 @@ class ConversationWidget(WidgetBase):
         future = asyncio.async(self._client.set_active())
         future.add_done_callback(lambda future: future.result())
 
-        # Mark the newest event as read.
-        future = asyncio.async(self._conversation.update_read_timestamp())
-        future.add_done_callback(lambda future: future.result())
+        position = self._list_walker.focus_position
+        if position != ConversationEventListWalker.POSITION_LOADING:
+            # Mark the newest event as read.
+            future = asyncio.async(self._conversation.update_read_timestamp())
+            future.add_done_callback(lambda future: future.result())
 
         return super().keypress(size, key)
 

@@ -126,7 +126,8 @@ class Client(object):
 
         self._channel = channel.Channel(
             self._session, max_retries=self._max_retries,
-            retry_backoff_base=self._retry_backoff_base)
+            retry_backoff_base=self._retry_backoff_base
+        )
 
         # Forward the Channel events to the Client events.
         self._channel.on_connect.add_observer(self.on_connect.fire)
@@ -352,15 +353,6 @@ class Client(object):
             ))
         return response['sessionStatus']
 
-    @property
-    def _cookies(self):
-        """get all cookies of the session
-
-        Returns:
-            dict, cookie name as key and cookie value as data
-        """
-        return self._session.cookies
-
     @asyncio.coroutine
     def _on_receive_array(self, array):
         """Parse channel array and call the appropriate events."""
@@ -479,11 +471,12 @@ class Client(object):
         Raises:
             NetworkError: If the request fails.
         """
-        headers = {}
-        headers['content-type'] = content_type
-        # This header is required for Protocol Buffer responses, which causes
-        # them to be base64 encoded:
-        headers['X-Goog-Encode-Response-If-Executable'] = 'base64'
+        headers = {
+            'content-type': content_type,
+            # This header is required for Protocol Buffer responses. It causes
+            # them to be base64 encoded:
+            'X-Goog-Encode-Response-If-Executable': 'base64',
+        }
         params = {
             # "alternative representation type" (desired response format).
             'alt': response_type,

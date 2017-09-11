@@ -4,6 +4,7 @@ import aiohttp
 import asyncio
 import collections
 import logging
+import urllib.parse
 
 from hangups import exceptions, channel
 
@@ -15,8 +16,8 @@ MAX_RETRIES = 3
 FetchResponse = collections.namedtuple('FetchResponse', ['code', 'body'])
 
 
-class ClientSession(aiohttp.ClientSession):
-    """Session to file http requests
+class Session(object):
+    """Session container to file http requests
 
     Args:
         cookies: dict, initial cookies for authentication
@@ -24,7 +25,7 @@ class ClientSession(aiohttp.ClientSession):
     """
     def __init__(self, cookies=None, proxy=None):
         self._proxy = proxy
-        super().__init__(cookies=cookies)
+        self._session = aiohttp.ClientSession(cookies=cookies)
 
     @property
     def cookies(self):
@@ -34,7 +35,11 @@ class ClientSession(aiohttp.ClientSession):
             dict, cookie name as key and cookie value as data
         """
         return {cookie.key: cookie.value
-                for cookie in self._cookie_jar}
+                for cookie in self._session.cookie_jar}
+
+    def close(self):
+        """forward the call to the aiohttp.ClientSession"""
+        self._session.close()
 
     def _get_cookie(self, name):
         """get a cookie or raise an error for a missing one
@@ -48,23 +53,32 @@ class ClientSession(aiohttp.ClientSession):
         Raises:
             KeyError: the requested cookie was not set by the server
         """
-        for cookie in self._cookie_jar:
+        for cookie in self._session.cookie_jar:
             if cookie.key == name:
                 return cookie.value
         raise KeyError("Cookie '{}' is required".format(name))
 
-    def _update_request(self, kwargs):
+    def _update_request(self, url, kwargs):
         """add authorization header for google and set the proxy
 
         Args:
-            kwargs: dict, may contain the key `header`
+            url: string, target URI
+            kwargs: dict, may contain the key `headers`
 
         Returns:
             dict, updated kwargs with auth in the header and configured proxy
+
+        Raises:
+            ValueError: the given url is not valid
         """
-        kwargs['headers'] = kwargs.get('headers') or {}   # headers may be None
-        kwargs['headers'].update(
-            channel.get_authorization_headers(self._get_cookie('SAPISID')))
+        hostname = urllib.parse.urlparse(url).hostname
+        if hostname is None:
+            raise ValueError('The given URI "%s" is not valid' % url)
+
+        if hostname.endswith('google.com'):
+            kwargs['headers'] = kwargs.get('headers') or {}
+            kwargs['headers'].update(
+                channel.get_authorization_headers(self._get_cookie('SAPISID')))
         kwargs.setdefault('proxy', self._proxy)
         return kwargs
 
@@ -83,8 +97,8 @@ class ClientSession(aiohttp.ClientSession):
         Raises:
             see ``aiohttp.ClientSession.request``
         """
-        kwargs = self._update_request(kwargs)
-        return (yield from super().request(method, url, **kwargs))
+        kwargs = self._update_request(url, kwargs)
+        return (yield from self._session.request(method, url, **kwargs))
 
     @asyncio.coroutine
     def get(self, url, **kwargs):
@@ -101,8 +115,8 @@ class ClientSession(aiohttp.ClientSession):
             see ``aiohttp.ClientSession.request``
         """
         # pylint:disable=arguments-differ
-        kwargs = self._update_request(kwargs)
-        return (yield from super().get(url, **kwargs))
+        kwargs = self._update_request(url, kwargs)
+        return (yield from self._session.get(url, **kwargs))
 
     @asyncio.coroutine
     def fetch(self, method, url, params=None, headers=None, data=None):
@@ -143,7 +157,7 @@ class ClientSession(aiohttp.ClientSession):
                 error_msg = 'Request timed out'
             except aiohttp.ServerDisconnectedError as err:
                 error_msg = 'Server disconnected error: {}'.format(err)
-            except aiohttp.ClientError as err:
+            except (aiohttp.ClientError, ValueError) as err:
                 error_msg = 'Request connection error: {}'.format(err)
             else:
                 break

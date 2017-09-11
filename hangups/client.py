@@ -41,8 +41,6 @@ class Client(object):
             retry_backoff_base^(# of retries attempted thus far)
             Defaults to 2.
     """
-    # http_utils.ClientSession instance (populated by .connect()):
-    _session = None
 
     def __init__(self, cookies, max_retries=5, retry_backoff_base=2):
         self._max_retries = max_retries
@@ -74,7 +72,10 @@ class Client(object):
             state_update: A ``StateUpdate`` message.
         """
 
-        # Cookies for the init of our ClientSession:
+        # http_utils.Session instance (populated by .connect()):
+        self._session = None
+
+        # Cookies for the init of our Session:
         self.__cookies = cookies
 
         # channel.Channel instance (populated by .connect()):
@@ -108,11 +109,6 @@ class Client(object):
         # ActiveClientState enum int value or None:
         self._active_client_state = None
 
-    def __del__(self):
-        """explicit cleanup"""
-        if self._session is not None:
-            self._session.close()
-
     ##########################################################################
     # Public methods
     ##########################################################################
@@ -124,7 +120,7 @@ class Client(object):
         Returns when an error has occurred, or :func:`disconnect` has been
         called.
         """
-        self._session = http_utils.ClientSession(
+        self._session = http_utils.Session(
             cookies=self.__cookies, proxy=os.environ.get('HTTP_PROXY'))
         self.__cookies = None   # cleanup: no further usage outside the session
 
@@ -145,6 +141,8 @@ class Client(object):
             yield from self._listen_future
         except asyncio.CancelledError:
             pass
+        finally:
+            self._session.close()
         logger.info('Client.connect returning because Channel.listen returned')
 
     @asyncio.coroutine

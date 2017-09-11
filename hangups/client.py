@@ -76,7 +76,7 @@ class Client(object):
         self._session = None
 
         # Cookies required to initialize Session:
-        self._cookies = cookies
+        self.__cookies = cookies
 
         # channel.Channel instance (populated by .connect()):
         self._channel = None
@@ -121,7 +121,8 @@ class Client(object):
         called.
         """
         proxy = os.environ.get('HTTP_PROXY')
-        self._session = http_utils.Session(self._cookies, proxy=proxy)
+        self._session = http_utils.Session(self.__cookies, proxy=proxy)
+        self.__cookies = None
         try:
             self._channel = channel.Channel(
                 self._session, self._max_retries, self._retry_backoff_base
@@ -344,6 +345,15 @@ class Client(object):
                 reason
             ))
         return response['sessionStatus']
+
+    @property
+    def _cookies(self):
+        """get all cookies of the session
+
+        Returns:
+            dict, cookie name as key and cookie value as data
+        """
+        return self._session.cookies
 
     @asyncio.coroutine
     def _on_receive_array(self, array):

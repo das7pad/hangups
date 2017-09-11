@@ -353,6 +353,15 @@ class Client(object):
             ))
         return response['sessionStatus']
 
+    @property
+    def _cookies(self):
+        """get all cookies of the session
+
+        Returns:
+            dict, cookie name as key and cookie value as data
+        """
+        return self._session.cookies
+
     @asyncio.coroutine
     def _on_receive_array(self, array):
         """Parse channel array and call the appropriate events."""

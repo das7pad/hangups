@@ -340,6 +340,7 @@ class Client(object):
                 reason = '{} : {}'.format(info['status'], info['message'])
             except KeyError:
                 reason = 'unknown reason'
+                logger.error(repr(response))
             raise exceptions.NetworkError('image upload failed: {}'.format(
                 reason
             ))

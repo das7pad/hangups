@@ -4,42 +4,59 @@
 
 python = python3
 venv = venv
+pip = $(venv)/bin/pip
 
 .PHONY: venv
-venv: venv-create venv-deps
-
-.PHONY: venv-create
-venv-create:
-	$(python) -m venv --clear $(venv)
+venv:
+	@if [ ! -d $(venv) ]; then \
+		echo "Creating venv" && $(python) -m venv $(venv); fi
 
 .PHONY: venv-deps
-venv-deps:
-	$(venv)/bin/pip install --upgrade pip
-	$(venv)/bin/pip install --editable .
-	$(venv)/bin/pip install --requirement requirements-dev.txt
+venv-deps: venv
+	@echo "Upgrading requirements"
+	@$(pip) install -q --upgrade pip
+	@$(pip) install -q --editable .
+	@$(pip) install -q --requirement requirements-dev.txt
 
 .PHONY: test-all
 test-all: style lint check test
 
 .PHONY: style
 style:
-	$(venv)/bin/pycodestyle hangups
+	@if [ ! -d $(venv)/lib/*/site-packages/pycodestyle*/ ]; then \
+		make -s venv-deps; fi
+	@echo "Stylecheck: started"
+	@$(venv)/bin/pycodestyle hangups
+	@echo "Stylecheck: no errors found"
 
 .PHONY: lint
 lint:
-	$(venv)/bin/pylint -j 4 --reports=n hangups
+	@if [ ! -d $(venv)/lib/*/site-packages/pylint/ ]; then \
+		make -s venv-deps; fi
+	@echo "Lint: started"
+	@$(venv)/bin/pylint -s no -j 4 --reports=n hangups
+	@echo "Lint: no errors found"
 
 .PHONY: check
-check:
-	$(venv)/bin/python setup.py check --metadata --restructuredtext --strict
+check: venv
+	@if [ ! -d $(venv)/lib/*/site-packages/docutils/ ]; then \
+		make -s venv-deps; fi
+	@echo "Package check: started"
+	@$(venv)/bin/python setup.py check -q --metadata --restructuredtext --strict
+	@echo "Package check: no errors found"
 
 .PHONY: test
 test:
-	$(venv)/bin/pytest hangups
+	@if [ ! -d $(venv)/lib/*/site-packages/_pytest/ ]; then \
+		make -s venv-deps; fi
+	@echo "Tests: started"
+	@$(venv)/bin/pytest -qq hangups
+	@echo "Test: all completed"
 
 .PHONY: clean
 clean:
-	rm -rf $(venv) `find . -name __pycache__`
+	@echo "Remove venv and compiled python files"
+	@rm -rf $(venv) `find . -name __pycache__`
 
 ##############################################################################
 # Protocol buffer targets

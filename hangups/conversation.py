@@ -504,6 +504,31 @@ class Conversation(object):
         )
 
     @asyncio.coroutine
+    def add_users(self, *user_ids):
+        """Add Users into this conversation.
+
+        Args:
+            user_ids (tuple): a tuple of `user.UserID`s.
+
+        Raises:
+            NetworkError: If a User cannot be added.
+        """
+        present_users = set(user.UserID(chat_id=part.id.chat_id,
+                                        gaia_id=part.id.gaia_id)
+                            for part in self._conversation.participant_data)
+        new_user_ids = set(user_ids) - present_users
+        if not new_user_ids:
+            return
+        yield from self._client.add_user(
+            hangouts_pb2.AddUserRequest(
+                request_header=self._client.get_request_header(),
+                invitee_id=[hangouts_pb2.InviteeID(gaia_id=user_id.chat_id)
+                            for user_id in new_user_ids],
+                event_request_header=self._get_event_request_header(),
+            )
+        )
+
+    @asyncio.coroutine
     def set_notification_level(self, level):
         """Set the notification level of this conversation.
 

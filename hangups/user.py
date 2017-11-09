@@ -152,8 +152,8 @@ class UserList(object):
         # only use them as a fallback.
         for participant in conv_parts:
             self._add_user_from_conv_part(participant)
-        logger.info('UserList initialized with %s user(s)',
-                    len(self._user_dict))
+        logger.info('%s initialized with %s user(s)',
+                    self.__class__.__name__, len(self._user_dict))
 
         self._client.on_state_update.add_observer(self._on_state_update)
 
@@ -172,8 +172,8 @@ class UserList(object):
         try:
             return self._user_dict[user_id]
         except KeyError:
-            logger.warning('UserList returning unknown User for UserID %s',
-                           user_id)
+            logger.warning('%s returning unknown User for UserID %s',
+                           self.__class__.__name__, user_id)
             return self.user_cls(user_id, None, None, None, [], False)
 
     def get_all(self):

@@ -80,8 +80,8 @@ class User(object):
             logger.debug('Added %s name to User "%s": %s',
                          self.name_type.name.lower(), self.full_name, self)
 
-    @staticmethod
-    def from_entity(entity, self_user_id):
+    @classmethod
+    def from_entity(cls, entity, self_user_id):
         """Construct user from ``Entity`` message.
 
         Args:
@@ -94,14 +94,14 @@ class User(object):
         """
         user_id = UserID(chat_id=entity.id.chat_id,
                          gaia_id=entity.id.gaia_id)
-        return User(user_id, entity.properties.display_name,
-                    entity.properties.first_name,
-                    entity.properties.photo_url,
-                    entity.properties.email,
-                    (self_user_id == user_id) or (self_user_id is None))
+        return cls(user_id, entity.properties.display_name,
+                   entity.properties.first_name,
+                   entity.properties.photo_url,
+                   entity.properties.email,
+                   (self_user_id == user_id) or (self_user_id is None))
 
-    @staticmethod
-    def from_conv_part_data(conv_part_data, self_user_id):
+    @classmethod
+    def from_conv_part_data(cls, conv_part_data, self_user_id):
         """Construct user from ``ConversationParticipantData`` message.
 
         Args:
@@ -114,8 +114,8 @@ class User(object):
         """
         user_id = UserID(chat_id=conv_part_data.id.chat_id,
                          gaia_id=conv_part_data.id.gaia_id)
-        return User(user_id, conv_part_data.fallback_name, None, None, [],
-                    (self_user_id == user_id) or (self_user_id is None))
+        return cls(user_id, conv_part_data.fallback_name, None, None, [],
+                   (self_user_id == user_id) or (self_user_id is None))
 
 
 class UserList(object):

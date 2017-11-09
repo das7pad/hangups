@@ -712,6 +712,11 @@ class ConversationList(object):
         sync_timestamp (datetime.datetime): The time when ``conv_states`` was
             synced.
     """
+    conv_cls = Conversation
+    """A custom class used to create new Conversation instances
+
+    May be a subclass of `hangups.conversation.Conversation`
+    """
 
     def __init__(self, client, conv_states, user_list, sync_timestamp):
         self._client = client  # Client
@@ -802,8 +807,8 @@ class ConversationList(object):
         # pylint: disable=dangerous-default-value
         conv_id = conversation.conversation_id.id
         logger.debug('Adding new conversation: {}'.format(conv_id))
-        conv = Conversation(self._client, self._user_list, conversation,
-                            events)
+        conv = self.conv_cls(self._client, self._user_list, conversation,
+                             events)
         self._conv_dict[conv_id] = conv
         return conv
 

@@ -155,7 +155,8 @@ class Conversation(object):
             if event_.event_type != hangouts_pb2.EVENT_TYPE_OBSERVED_EVENT:
                 self.add_event(event_)
 
-        self.on_event = event.Event('Conversation.on_event')
+        cls_name = self.__class__.__name__
+        self.on_event = event.Event('%s.on_event' % cls_name)
         """
         :class:`~hangups.event.Event` fired when an event occurs in this
         conversation.
@@ -164,7 +165,7 @@ class Conversation(object):
             conv_event: :class:`ConversationEvent` that occurred.
         """
 
-        self.on_typing = event.Event('Conversation.on_typing')
+        self.on_typing = event.Event('%s.on_typing' % cls_name)
         """
         :class:`~hangups.event.Event` fired when a users starts or stops typing
         in this conversation.
@@ -175,7 +176,7 @@ class Conversation(object):
         """
 
         self.on_watermark_notification = event.Event(
-            'Conversation.on_watermark_notification'
+            '%s.on_watermark_notification' % cls_name
         )
         """
         :class:`~hangups.event.Event` fired when a watermark (read timestamp)
@@ -739,7 +740,8 @@ class ConversationList(object):
         self._client.on_connect.add_observer(self._sync)
         self._client.on_reconnect.add_observer(self._sync)
 
-        self.on_event = event.Event('ConversationList.on_event')
+        cls_name = self.__class__.__name__
+        self.on_event = event.Event('%s.on_event' % cls_name)
         """
         :class:`~hangups.event.Event` fired when an event occurs in any
         conversation.
@@ -748,7 +750,7 @@ class ConversationList(object):
             conv_event: :class:`ConversationEvent` that occurred.
         """
 
-        self.on_typing = event.Event('ConversationList.on_typing')
+        self.on_typing = event.Event('%s.on_typing' % cls_name)
         """
         :class:`~hangups.event.Event` fired when a users starts or stops typing
         in any conversation.
@@ -759,7 +761,7 @@ class ConversationList(object):
         """
 
         self.on_watermark_notification = event.Event(
-            'ConversationList.on_watermark_notification'
+            '%s.on_watermark_notification' % cls_name
         )
         """
         :class:`~hangups.event.Event` fired when a watermark (read timestamp)

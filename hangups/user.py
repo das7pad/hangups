@@ -132,15 +132,20 @@ class UserList(object):
             used as a fallback in case any users are missing.
 
     """
+    user_cls = User
+    """A custom class used to create new User instances
+
+    May be a subclass of `hangups.user.User`
+    """
 
     def __init__(self, client, self_entity, entities, conv_parts):
         self._client = client
-        self._self_user = User.from_entity(self_entity, None)
+        self._self_user = self.user_cls.from_entity(self_entity, None)
         # {UserID: User}
         self._user_dict = {self._self_user.id_: self._self_user}
         # Add each entity as a new User.
         for entity in entities:
-            user_ = User.from_entity(entity, self._self_user.id_)
+            user_ = self.user_cls.from_entity(entity, self._self_user.id_)
             self._user_dict[user_.id_] = user_
         # Add each conversation participant as a new User if we didn't already
         # add them from an entity. These don't include a real first_name, so
@@ -169,7 +174,7 @@ class UserList(object):
         except KeyError:
             logger.warning('UserList returning unknown User for UserID %s',
                            user_id)
-            return User(user_id, None, None, None, [], False)
+            return self.user_cls(user_id, None, None, None, [], False)
 
     def get_all(self):
         """Get all known users.
@@ -181,7 +186,8 @@ class UserList(object):
 
     def _add_user_from_conv_part(self, conv_part):
         """Add or upgrade User from ConversationParticipantData."""
-        user_ = User.from_conv_part_data(conv_part, self._self_user.id_)
+        user_ = self.user_cls.from_conv_part_data(
+            conv_part, self._self_user.id_)
 
         existing = self._user_dict.get(user_.id_)
         if existing is None:

@@ -14,7 +14,9 @@ MAX_CONVERSATION_PAGES = 100
 
 
 @asyncio.coroutine
-def build_user_conversation_list(client):
+def build_user_conversation_list(client,
+                                 user_list_cls=user.UserList,
+                                 conv_list_cls=None):
     """Build :class:`~UserList` and :class:`~ConversationList`.
 
     This method requests data necessary to build the list of conversations and
@@ -23,11 +25,15 @@ def build_user_conversation_list(client):
 
     Args:
         client (Client): Connected client.
+        user_list_cls (user.UserList): a custom class for the user list
+        conv_list_cls (ConversationList): a custom class for the conv list
 
     Returns:
         (:class:`~UserList`, :class:`~ConversationList`):
             Tuple of built objects.
     """
+    conv_list_cls = conv_list_cls or ConversationList
+
     conv_states, sync_timestamp = yield from _sync_all_conversations(client)
 
     # Retrieve entities participating in all conversations.
@@ -72,10 +78,10 @@ def build_user_conversation_list(client):
     )
     self_entity = get_self_info_response.self_entity
 
-    user_list = user.UserList(client, self_entity, required_entities,
+    user_list = user_list_cls(client, self_entity, required_entities,
                               conv_part_list)
-    conversation_list = ConversationList(client, conv_states,
-                                         user_list, sync_timestamp)
+    conversation_list = conv_list_cls(client, conv_states,
+                                      user_list, sync_timestamp)
     return (user_list, conversation_list)
 
 

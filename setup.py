@@ -2,12 +2,9 @@ from setuptools import setup
 import os
 import sys
 
-
-if sys.version_info < (3, 5):
-    # This is the minimum version which has support for `async def`/`await`/
-    # `async with` syntax.
-    raise RuntimeError("hangups requires Python 3.5+")
-
+# This is the minimum version which has support for `async def`/`await`/
+# `async with` syntax.
+python_requires='>=3.5.0'
 
 # Find __version__ without import that requires dependencies to be installed:
 exec(open(os.path.join(
@@ -66,6 +63,7 @@ setup(
         'Environment :: Console :: Curses',
     ],
     packages=['hangups', 'hangups.ui'],
+    python_requires=python_requires,
     install_requires=install_requires,
     entry_points={
         'console_scripts': [

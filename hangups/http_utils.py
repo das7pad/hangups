@@ -33,6 +33,16 @@ class Session(object):
         sapisid = cookies['SAPISID']
         self._authorization_headers = _get_authorization_headers(sapisid)
 
+    @property
+    def cookies(self):
+        """get all cookies of the session
+
+        Returns:
+            dict, cookie name as key and cookie value as data
+        """
+        return {cookie.key: cookie.value
+                for cookie in self._session.cookie_jar}
+
     @asyncio.coroutine
     def fetch(self, method, url, params=None, headers=None, data=None):
         """Make an HTTP request.

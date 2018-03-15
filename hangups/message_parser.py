@@ -3,6 +3,7 @@
 import re
 
 from reparser import Parser, Token, MatchGroup
+from tld import get_tld_names
 
 from hangups import hangouts_pb2
 
@@ -24,15 +25,21 @@ html_newline = r'(?i)<br\s*/?>'
 newline = r'\n|\r\n'
 
 # Based on URL regex pattern by John Gruber
-# (http://gist.github.com/gruber/249502)
-auto_link = (
-    r'(?i)\b('
-    r'(?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]|'
-    r'[a-z0-9.\-]+[.][a-z]{2,4}/)'
-    r'(?:[^\s()<>]|\((?:[^\s()<>]|(?:\([^\s()<>]+\)))*\))+'
-    r'(?:\((?:[^\s()<>]|(?:\([^\s()<>]+\)))*\)|'
-    r'[^\s`!()\[\]{};:\'".,<>?«»“”‘’]))'
-)
+# (https://gist.github.com/gruber/8891611)
+# and a top level domain list that can be pulled besides pip-upgrades:
+#  see https://github.com/barseghyanartur/tld#update-the-list-of-tld-names
+_DOMAINS = '|'.join(re.escape(item) for item in get_tld_names())
+_BALANCED_PARENS = r'\([^\s()]*?\([^\s()]+\)[^\s()]*?\)'
+AUTO_LINK = (
+    (r'(?i)\b('
+     r'(?:https?:(?:/{1,3}|[a-z0-9%])|[a-z0-9.\-]+[.](?:domains)/)'
+     r'(?:[^\s()<>{}\[\]]+|balanced_parens|\([^\s]+?\))+'
+     r'(?:balanced_parens|\([^\s]+?\)|[^\s`!()\[\]{};:\'".,<>?«»“”‘’])|'
+     r'(?:(?<!@)[a-z0-9]+(?:[.\-][a-z0-9]+)*[.](?:domains)\b/?(?!@)))')
+    .replace('domains', _DOMAINS).replace('balanced_parens', _BALANCED_PARENS))
+# cleanup
+del _DOMAINS
+del _BALANCED_PARENS
 
 # Precompiled regex for matching protocol part of URL
 url_proto_regex = re.compile(r'(?i)^[a-z][\w-]+:/{1,3}')
@@ -59,7 +66,7 @@ def url_complete(url):
 class Tokens:
     """Groups of tokens to be used by ChatMessageParser"""
     basic = [
-        Token('link', auto_link, link_target=MatchGroup('start',
+        Token('link', AUTO_LINK, link_target=MatchGroup('start',
                                                         func=url_complete)),
         Token('br', newline, text='\n',
               segment_type=hangouts_pb2.SEGMENT_TYPE_LINE_BREAK)

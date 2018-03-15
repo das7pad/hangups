@@ -8,5 +8,6 @@ cookies.txt
 .coverage
 .idea/
 .cache/
+.~*
 htmlcov/
 venv

@@ -27,6 +27,8 @@ class User(object):
     Use :class:`UserList` or :class:`ConversationList` methods to get instances
     of this class.
     """
+    __slots__ = ('name_type', 'full_name', 'first_name', 'id_', 'photo_url',
+                 'emails', 'is_self')
 
     def __init__(self, user_id, full_name, first_name, photo_url, emails,
                  is_self):

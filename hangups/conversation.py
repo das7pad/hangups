@@ -134,6 +134,9 @@ class Conversation(object):
 
     Use :class:`ConversationList` methods to get instances of this class.
     """
+    __slots__ = ('_client', '_user_list', '_conversation', '_events',
+                 '_events_dict', '_send_message_lock', 'on_event', 'on_typing',
+                 'on_watermark_notification')
 
     def __init__(self, client, user_list, conversation, events=[]):
         # pylint: disable=dangerous-default-value

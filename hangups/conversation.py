@@ -13,10 +13,9 @@ CONVERSATIONS_PER_REQUEST = 100
 MAX_CONVERSATION_PAGES = 100
 
 
-@asyncio.coroutine
-def build_user_conversation_list(client,
-                                 user_list_cls=user.UserList,
-                                 conv_list_cls=None):
+async def build_user_conversation_list(client,
+                                       user_list_cls=user.UserList,
+                                       conv_list_cls=None):
     """Build :class:`~UserList` and :class:`~ConversationList`.
 
     This method requests data necessary to build the list of conversations and
@@ -34,7 +33,7 @@ def build_user_conversation_list(client,
     """
     conv_list_cls = conv_list_cls or ConversationList
 
-    conv_states, sync_timestamp = yield from _sync_all_conversations(client)
+    conv_states, sync_timestamp = await _sync_all_conversations(client)
 
     # Retrieve entities participating in all conversations.
     required_user_ids = set()
@@ -48,7 +47,7 @@ def build_user_conversation_list(client,
         logger.debug('Need to request additional users: {}'
                      .format(required_user_ids))
         try:
-            response = yield from client.get_entity_by_id(
+            response = await client.get_entity_by_id(
                 hangouts_pb2.GetEntityByIdRequest(
                     request_header=client.get_request_header(),
                     batch_lookup_spec=[
@@ -71,7 +70,7 @@ def build_user_conversation_list(client,
         conv_part_list.extend(conv_state.conversation.participant_data)
 
     # Retrieve self entity.
-    get_self_info_response = yield from client.get_self_info(
+    get_self_info_response = await client.get_self_info(
         hangouts_pb2.GetSelfInfoRequest(
             request_header=client.get_request_header(),
         )

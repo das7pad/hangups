@@ -503,12 +503,11 @@ class Conversation(object):
             )
         )
 
-    @asyncio.coroutine
-    def add_users(self, *user_ids):
+    async def add_users(self, *user_ids):
         """Add Users into this conversation.
 
         Args:
-            user_ids (tuple): a tuple of `user.UserID`s.
+            user_ids (user.UserID): a tuple of `user.UserID`s.
 
         Raises:
             NetworkError: If a User cannot be added.
@@ -519,7 +518,7 @@ class Conversation(object):
         new_user_ids = set(user_ids) - present_users
         if not new_user_ids:
             return
-        yield from self._client.add_user(
+        await self._client.add_user(
             hangouts_pb2.AddUserRequest(
                 request_header=self._client.get_request_header(),
                 invitee_id=[hangouts_pb2.InviteeID(gaia_id=user_id.chat_id)

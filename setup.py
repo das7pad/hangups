@@ -3,9 +3,10 @@ import os
 import sys
 
 
-if sys.version_info < (3, 4, 2):
-    # This is the minimum version supported by aiohttp.
-    raise RuntimeError("hangups requires Python 3.4.2+")
+if sys.version_info < (3, 5):
+    # This is the minimum version which has support for `async def`/`await`/
+    # `async with` syntax.
+    raise RuntimeError("hangups requires Python 3.5+")
 
 
 # Find __version__ without import that requires dependencies to be installed:
@@ -24,7 +25,8 @@ with open('README.rst') as f:
 # especially for end-users (non-developers) who use pip to install hangups.
 install_requires = [
     'ConfigArgParse==0.11.0',
-    'aiohttp>=1.3,<3',
+    'aiohttp>=1.3,<4',
+    'async-timeout>=2,<3',
     'appdirs>=1.4,<1.5',
     'readlike==0.1.2',
     'requests>=2.6.0,<3',  # uses semantic versioning (after 2.6)
@@ -34,12 +36,6 @@ install_requires = [
     'MechanicalSoup==0.6.0',
     'tld==0.7.9',
 ]
-
-
-if sys.version_info < (3, 4, 3):
-    # For Python earlier than 3.4.3, use a backported asyncio that fixes an
-    # issue with an exception being logged on exit.
-    install_requires.append('asyncio==3.4.3')
 
 
 setup(
@@ -59,7 +55,6 @@ setup(
         'Natural Language :: English',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3 :: Only',
-        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Topic :: Communications :: Chat',

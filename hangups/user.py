@@ -24,8 +24,8 @@ full name is available.
 class User(object):
     """A chat user.
 
-    Use :class:`UserList` or :class:`ConversationList` methods to get instances
-    of this class.
+    Use :class:`.UserList` or :class:`.ConversationList` methods to get
+    instances of this class.
     """
     __slots__ = ('name_type', 'full_name', 'first_name', 'id_', 'photo_url',
                  'emails', 'is_self')

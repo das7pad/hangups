@@ -12,9 +12,8 @@ import readlike
 
 import hangups
 from hangups.ui.emoticon import replace_emoticons
-from hangups.ui.notify import Notifier
-from hangups.ui.utils import get_conv_name
-from hangups.ui.utils import add_color_to_scheme
+from hangups.ui import notifier
+from hangups.ui.utils import get_conv_name, add_color_to_scheme
 
 
 # hangups used to require a fork of urwid called hangups-urwid which may still
@@ -58,16 +57,26 @@ COL_SCHEME_NAMES = (
     'msg_text', 'msg_text_self', 'status_line', 'tab_background'
 )
 
+DISCREET_NOTIFICATION = notifier.Notification(
+    'hangups', 'Conversation', 'New message'
+)
+
+
+class HangupsDisconnected(Exception):
+    """Raised when hangups is disconnected."""
+
 
 class ChatUI(object):
     """User interface for hangups."""
 
     def __init__(self, refresh_token_path, keybindings, palette,
-                 palette_colors, datetimefmt, notifier):
+                 palette_colors, datetimefmt, notifier_,
+                 discreet_notifications):
         """Start the user interface."""
         self._keys = keybindings
         self._datetimefmt = datetimefmt
-        self._notifier = notifier
+        self._notifier = notifier_
+        self._discreet_notifications = discreet_notifications
 
         set_terminal_title('hangups')
 
@@ -76,6 +85,8 @@ class ChatUI(object):
         self._tabbed_window = None  # TabbedWindowWidget
         self._conv_list = None  # hangups.ConversationList
         self._user_list = None  # hangups.UserList
+        self._coroutine_queue = CoroutineQueue()
+        self._exception = None
 
         # TODO Add urwid widget for getting auth.
         try:
@@ -87,6 +98,7 @@ class ChatUI(object):
         self._client.on_connect.add_observer(self._on_connect)
 
         loop = asyncio.get_event_loop()
+        loop.set_exception_handler(self._exception_handler)
         try:
             self._urwid_loop = urwid.MainLoop(
                 LoadingWidget(), palette, handle_mouse=False,
@@ -99,18 +111,49 @@ class ChatUI(object):
 
         self._urwid_loop.screen.set_terminal_properties(colors=palette_colors)
         self._urwid_loop.start()
+
+        coros = [self._connect(), self._coroutine_queue.consume()]
+
         # Enable bracketed paste mode after the terminal has been switched to
         # the alternate screen (after MainLoop.start() to work around bug
         # 729533 in VTE.
         with bracketed_paste_mode():
             try:
-                # Returns when the connection is closed.
-                loop.run_until_complete(self._client.connect())
+                # Run all the coros, until they all complete or one raises an
+                # exception. In the normal case, HangupsDisconnected will be
+                # raised.
+                loop.run_until_complete(asyncio.gather(*coros))
+            except HangupsDisconnected:
+                pass
             finally:
-                # Ensure urwid cleans up properly and doesn't wreck the
-                # terminal.
+                # Clean up urwid.
                 self._urwid_loop.stop()
+
+                # Cancel all of the coros, and wait for them to shut down.
+                task = asyncio.gather(*coros, return_exceptions=True)
+                task.cancel()
+                loop.run_until_complete(task)
+
                 loop.close()
+
+        # If an exception was stored, raise it now. This is used for exceptions
+        # originating in urwid callbacks.
+        if self._exception:
+            raise self._exception  # pylint: disable=raising-bad-type
+
+    async def _connect(self):
+        await self._client.connect()
+        raise HangupsDisconnected()
+
+    def _exception_handler(self, _loop, context):
+        """Handle exceptions from the asyncio loop."""
+        # Start a graceful shutdown.
+        self._coroutine_queue.put(self._client.disconnect())
+
+        # Store the exception to be re-raised later. If the context doesn't
+        # contain an exception, create one containing the error message.
+        default_exception = Exception(context.get('message'))
+        self._exception = context.get('exception', default_exception)
 
     def _input_filter(self, keys, _):
         """Handle global keybindings."""
@@ -120,7 +163,7 @@ class ChatUI(object):
             else:
                 self._hide_menu()
         elif keys == [self._keys['quit']]:
-            self._on_quit()
+            self._coroutine_queue.put(self._client.disconnect())
         else:
             return keys
 
@@ -145,11 +188,11 @@ class ChatUI(object):
         if conv_id not in self._conv_widgets:
             set_title_cb = (lambda widget, title:
                             self._tabbed_window.set_tab(widget, title=title))
-            widget = ConversationWidget(self._client,
-                                        self._conv_list.get(conv_id),
-                                        set_title_cb,
-                                        self._keys,
-                                        self._datetimefmt)
+            widget = ConversationWidget(
+                self._client, self._coroutine_queue,
+                self._conv_list.get(conv_id), set_title_cb, self._keys,
+                self._datetimefmt
+            )
             self._conv_widgets[conv_id] = widget
         return self._conv_widgets[conv_id]
 
@@ -164,11 +207,10 @@ class ChatUI(object):
         # switch to new or existing tab for the conversation
         self.add_conversation_tab(conv_id, switch=True)
 
-    @asyncio.coroutine
-    def _on_connect(self):
+    async def _on_connect(self):
         """Handle connecting for the first time."""
         self._user_list, self._conv_list = (
-            yield from hangups.build_user_conversation_list(self._client)
+            await hangups.build_user_conversation_list(self._client)
         )
         self._conv_list.on_event.add_observer(self._on_event)
 
@@ -185,36 +227,68 @@ class ChatUI(object):
         """Open conversation tab for new messages & pass events to notifier."""
         conv = self._conv_list.get(conv_event.conversation_id)
         user = conv.get_user(conv_event.user_id)
-        add_tab = all((
+        show_notification = all((
             isinstance(conv_event, hangups.ChatMessageEvent),
             not user.is_self,
             not conv.is_quiet,
         ))
-        if add_tab:
+        if show_notification:
             self.add_conversation_tab(conv_event.conversation_id)
-        # Handle notifications
-        if self._notifier is not None:
-            self._notifier.on_event(conv, conv_event)
+            if self._discreet_notifications:
+                notification = DISCREET_NOTIFICATION
+            else:
+                notification = notifier.Notification(
+                    user.full_name, get_conv_name(conv), conv_event.text
+                )
+            self._notifier.send(notification)
 
-    def _on_quit(self):
-        """Handle the user quitting the application."""
-        future = asyncio.async(self._client.disconnect())
-        future.add_done_callback(lambda future: future.result())
+
+class CoroutineQueue:
+    """Coroutine queue for the user interface.
+
+    Urwid executes callback functions for user input rather than coroutines.
+    This creates a problem if we need to execute a coroutine in response to
+    user input.
+
+    One option is to use asyncio.ensure_future to execute a "fire and forget"
+    coroutine. If we do this, exceptions will be logged instead of propagated,
+    which can obscure problems.
+
+    This class allows callbacks to place coroutines into a queue, and have them
+    executed by another coroutine. Exceptions will be propagated from the
+    consume method.
+    """
+
+    def __init__(self):
+        self._queue = asyncio.Queue()
+
+    def put(self, coro):
+        """Put a coroutine in the queue to be executed."""
+        # Avoid logging when a coroutine is queued or executed to avoid log
+        # spam from coroutines that are started on every keypress.
+        assert asyncio.iscoroutine(coro)
+        self._queue.put_nowait(coro)
+
+    async def consume(self):
+        """Consume coroutines from the queue by executing them."""
+        while True:
+            coro = await self._queue.get()
+            assert asyncio.iscoroutine(coro)
+            await coro
 
 
 class WidgetBase(urwid.WidgetWrap):
     """Base for UI Widgets
 
     This class overrides the property definition for the method ``keypress`` in
-     ``urwid.WidgetWrap``.
-    Using a method that overrides the property saves many pylint suppressions.
+    ``urwid.WidgetWrap``. Using a method that overrides the property saves
+    many pylint suppressions.
 
     Args:
         target: urwid.Widget instance
     """
     def keypress(self, size, key):
         """forward the call"""
-        # TODO(das7pad) add custom key mapping here
         # pylint:disable=not-callable, useless-super-delegation
         return super().keypress(size, key)
 
@@ -232,7 +306,9 @@ class LoadingWidget(WidgetBase):
 class RenameConversationDialog(WidgetBase):
     """Dialog widget for renaming a conversation."""
 
-    def __init__(self, conversation, on_cancel, on_save):
+    def __init__(self, coroutine_queue, conversation, on_cancel, on_save,
+                 keybindings):
+        self._coroutine_queue = coroutine_queue
         self._conversation = conversation
         edit = urwid.Edit(edit_text=get_conv_name(conversation))
         items = [
@@ -245,24 +321,24 @@ class RenameConversationDialog(WidgetBase):
             urwid.Button('Cancel', on_press=lambda _: on_cancel()),
         ]
         list_walker = urwid.SimpleFocusListWalker(items)
-        list_box = urwid.ListBox(list_walker)
+        list_box = ListBox(keybindings, list_walker)
         super().__init__(list_box)
 
     def _rename(self, name, callback):
         """Rename conversation and call callback."""
-        future = asyncio.async(self._conversation.rename(name))
-        future.add_done_callback(lambda future: future.result())
+        self._coroutine_queue.put(self._conversation.rename(name))
         callback()
 
 
 class ConversationMenu(WidgetBase):
     """Menu for conversation actions."""
 
-    def __init__(self, conversation, close_callback, keybindings):
+    def __init__(self, coroutine_queue, conversation, close_callback,
+                 keybindings):
         rename_dialog = RenameConversationDialog(
-            conversation,
+            coroutine_queue, conversation,
             lambda: frame.contents.__setitem__('body', (list_box, None)),
-            close_callback
+            close_callback, keybindings
         )
         items = [
             urwid.Text(
@@ -278,22 +354,11 @@ class ConversationMenu(WidgetBase):
             urwid.Button('Back', on_press=lambda _: close_callback()),
         ]
         list_walker = urwid.SimpleFocusListWalker(items)
-        list_box = urwid.ListBox(list_walker)
+        list_box = ListBox(keybindings, list_walker)
         frame = urwid.Frame(list_box)
         padding = urwid.Padding(frame, left=1, right=1)
         line_box = urwid.LineBox(padding, title='Conversation Menu')
         super().__init__(line_box)
-        self._keys = keybindings
-
-    def keypress(self, size, key):
-        # Handle alternate up/down keybindings
-        key = super().keypress(size, key)
-        if key == self._keys['down']:
-            super().keypress(size, 'down')
-        elif key == self._keys['up']:
-            super().keypress(size, 'up')
-        else:
-            return key
 
 
 class ConversationButton(WidgetBase):
@@ -348,25 +413,36 @@ class ConversationListWalker(urwid.SimpleFocusListWalker):
                   reverse=True)
 
 
+class ListBox(WidgetBase):
+    """ListBox widget supporting alternate keybindings."""
+
+    def __init__(self, keybindings, list_walker):
+        self._keybindings = keybindings
+        super().__init__(urwid.ListBox(list_walker))
+
+    def keypress(self, size, key):
+        # Handle alternate up/down keybindings
+        key = super().keypress(size, key)
+        if key == self._keybindings['down']:
+            super().keypress(size, 'down')
+        elif key == self._keybindings['up']:
+            super().keypress(size, 'up')
+        elif key == self._keybindings['page_up']:
+            super().keypress(size, 'page up')
+        elif key == self._keybindings['page_down']:
+            super().keypress(size, 'page down')
+        else:
+            return key
+
+
 class ConversationPickerWidget(WidgetBase):
     """ListBox widget for picking a conversation from a list."""
 
     def __init__(self, conversation_list, on_select, keybindings):
         list_walker = ConversationListWalker(conversation_list, on_select)
-        list_box = urwid.ListBox(list_walker)
+        list_box = ListBox(keybindings, list_walker)
         widget = urwid.Padding(list_box, left=2, right=2)
         super().__init__(widget)
-        self._keys = keybindings
-
-    def keypress(self, size, key):
-        # Handle alternate up/down keybindings
-        key = super().keypress(size, key)
-        if key == self._keys['down']:
-            super().keypress(size, 'down')
-        elif key == self._keys['up']:
-            super().keypress(size, 'up')
-        else:
-            return key
 
 
 class ReturnableEdit(urwid.Edit):
@@ -598,7 +674,8 @@ class ConversationEventListWalker(urwid.ListWalker):
 
     POSITION_LOADING = 'loading'
 
-    def __init__(self, conversation, datetimefmt):
+    def __init__(self, coroutine_queue, conversation, datetimefmt):
+        self._coroutine_queue = coroutine_queue  # CoroutineQueue
         self._conversation = conversation  # Conversation
         self._is_scrolling = False  # Whether the user is trying to scroll up
         self._is_loading = False  # Whether we're currently loading more events
@@ -624,30 +701,26 @@ class ConversationEventListWalker(urwid.ListWalker):
         else:
             self._modified()
 
-    @asyncio.coroutine
-    def _load(self):
+    async def _load(self):
         """Load more events for this conversation."""
-        # Don't try to load while we're already loading.
-        if not self._is_loading and not self._first_loaded:
-            self._is_loading = True
-            try:
-                conv_events = yield from self._conversation.get_events(
-                    self._conversation.events[0].id_
-                )
-            except (IndexError, hangups.NetworkError):
-                conv_events = []
-            if not conv_events:
-                self._first_loaded = True
-            if self._focus_position == self.POSITION_LOADING and conv_events:
-                # If the loading indicator is still focused, and we loaded more
-                # events, set focus on the first new event so the loaded
-                # indicator is replaced.
-                self.set_focus(conv_events[-1].id_)
-            else:
-                # Otherwise, still need to invalidate in case the loading
-                # indicator is showing but not focused.
-                self._modified()
-            self._is_loading = False
+        try:
+            conv_events = await self._conversation.get_events(
+                self._conversation.events[0].id_
+            )
+        except (IndexError, hangups.NetworkError):
+            conv_events = []
+        if not conv_events:
+            self._first_loaded = True
+        if self._focus_position == self.POSITION_LOADING and conv_events:
+            # If the loading indicator is still focused, and we loaded more
+            # events, set focus on the first new event so the loaded
+            # indicator is replaced.
+            self.set_focus(conv_events[-1].id_)
+        else:
+            # Otherwise, still need to invalidate in case the loading
+            # indicator is showing but not focused.
+            self._modified()
+        self._is_loading = False
 
     def __getitem__(self, position):
         """Return widget at position or raise IndexError."""
@@ -656,8 +729,10 @@ class ConversationEventListWalker(urwid.ListWalker):
                 # TODO: Show the full date the conversation was created.
                 return urwid.Text('No more messages', align='center')
             else:
-                future = asyncio.async(self._load())
-                future.add_done_callback(lambda future: future.result())
+                # Don't try to load while we're already loading.
+                if not self._is_loading and not self._first_loaded:
+                    self._is_loading = True
+                    self._coroutine_queue.put(self._load())
                 return urwid.Text('Loading...', align='center')
         try:
             # When creating the widget, also pass the previous event so a
@@ -722,9 +797,10 @@ class ConversationEventListWalker(urwid.ListWalker):
 class ConversationWidget(WidgetBase):
     """Widget for interacting with a conversation."""
 
-    def __init__(self, client, conversation, set_title_cb, keybindings,
-                 datetimefmt):
+    def __init__(self, client, coroutine_queue, conversation, set_title_cb,
+                 keybindings, datetimefmt):
         self._client = client
+        self._coroutine_queue = coroutine_queue
         self._conversation = conversation
         self._conversation.on_event.add_observer(self._on_event)
         self._conversation.on_watermark_notification.add_observer(
@@ -736,9 +812,10 @@ class ConversationWidget(WidgetBase):
         self._set_title_cb = set_title_cb
         self._set_title()
 
-        self._list_walker = ConversationEventListWalker(conversation,
-                                                        datetimefmt)
-        self._list_box = urwid.ListBox(self._list_walker)
+        self._list_walker = ConversationEventListWalker(
+            coroutine_queue, conversation, datetimefmt
+        )
+        self._list_box = ListBox(keybindings, self._list_walker)
         self._status_widget = StatusLineWidget(client, conversation)
         self._widget = urwid.Pile([
             ('weight', 1, self._list_box),
@@ -758,17 +835,18 @@ class ConversationWidget(WidgetBase):
 
     def get_menu_widget(self, close_callback):
         """Return the menu widget associated with this widget."""
-        return ConversationMenu(self._conversation, close_callback, self._keys)
+        return ConversationMenu(
+            self._coroutine_queue, self._conversation, close_callback,
+            self._keys
+        )
 
     def keypress(self, size, key):
         """Handle marking messages as read and keeping client active."""
         # Set the client as active.
-        future = asyncio.async(self._client.set_active())
-        future.add_done_callback(lambda future: future.result())
+        self._coroutine_queue.put(self._client.set_active())
 
         # Mark the newest event as read.
-        future = asyncio.async(self._conversation.update_read_timestamp())
-        future.add_done_callback(lambda future: future.result())
+        self._coroutine_queue.put(self._conversation.update_read_timestamp())
 
         return super().keypress(size, key)
 
@@ -791,17 +869,19 @@ class ConversationWidget(WidgetBase):
         else:
             image_file = None
         text = replace_emoticons(text)
-        # XXX: Exception handling here is still a bit broken. Uncaught
-        # exceptions in _on_message_sent will only be logged.
         segments = hangups.ChatMessageSegment.from_str(text)
-        asyncio.async(
-            self._conversation.send_message(segments, image_file=image_file)
-        ).add_done_callback(self._on_message_sent)
+        self._coroutine_queue.put(
+            self._handle_send_message(
+                self._conversation.send_message(
+                    segments, image_file=image_file
+                )
+            )
+        )
 
-    def _on_message_sent(self, future):
+    async def _handle_send_message(self, coro):
         """Handle showing an error if a message fails to send."""
         try:
-            future.result()
+            await coro
         except hangups.NetworkError:
             self._status_widget.show_message('Failed to send message')
 
@@ -911,6 +991,22 @@ def dir_maker(path):
             sys.exit('Failed to create directory: {}'.format(e))
 
 
+NOTIFIER_TYPES = {
+    'none': notifier.Notifier,
+    'default': notifier.DefaultNotifier,
+    'bell': notifier.BellNotifier,
+    'dbus': notifier.DbusNotifier,
+    'apple': notifier.AppleNotifier,
+}
+
+
+def get_notifier(notification_type, disable_notifications):
+    if disable_notifications:
+        return notifier.Notifier()
+    else:
+        return NOTIFIER_TYPES[notification_type]()
+
+
 def main():
     """Main entry point."""
     # Build default paths for files.
@@ -963,13 +1059,22 @@ def main():
                   help='keybinding for alternate up key')
     key_group.add('--key-down', default='j',
                   help='keybinding for alternate down key')
+    key_group.add('--key-page-up', default='ctrl b',
+                  help='keybinding for alternate page up')
+    key_group.add('--key-page-down', default='ctrl f',
+                  help='keybinding for alternate page down')
     notification_group = parser.add_argument_group('Notifications')
+    # deprecated in favor of --notification-type=none:
     notification_group.add('-n', '--disable-notifications',
                            action='store_true',
-                           help='disable desktop notifications')
+                           help=configargparse.SUPPRESS)
     notification_group.add('-D', '--discreet-notifications',
                            action='store_true',
                            help='hide message details in notifications')
+    notification_group.add('--notification-type',
+                           choices=sorted(NOTIFIER_TYPES.keys()),
+                           default='default',
+                           help='type of notifications to create')
 
     # add color scheme options
     col_group = parser.add_argument_group('Colors')
@@ -1008,30 +1113,29 @@ def main():
                                          getattr(args, 'col_' + name + '_bg'),
                                          palette_colors)
 
-    if not args.disable_notifications:
-        notifier = Notifier(args.discreet_notifications)
-    else:
-        notifier = None
+    keybindings = {
+        'next_tab': args.key_next_tab,
+        'prev_tab': args.key_prev_tab,
+        'close_tab': args.key_close_tab,
+        'quit': args.key_quit,
+        'menu': args.key_menu,
+        'up': args.key_up,
+        'down': args.key_down,
+        'page_up': args.key_page_up,
+        'page_down': args.key_page_down,
+    }
+
+    notifier_ = get_notifier(
+        args.notification_type, args.disable_notifications
+    )
 
     try:
         ChatUI(
-            args.token_path, {
-                'next_tab': args.key_next_tab,
-                'prev_tab': args.key_prev_tab,
-                'close_tab': args.key_close_tab,
-                'quit': args.key_quit,
-                'menu': args.key_menu,
-                'up': args.key_up,
-                'down': args.key_down
-            }, col_scheme, palette_colors, datetimefmt, notifier
+            args.token_path, keybindings, col_scheme, palette_colors,
+            datetimefmt, notifier_, args.discreet_notifications
         )
     except KeyboardInterrupt:
         sys.exit('Caught KeyboardInterrupt, exiting abnormally')
-    except:
-        # urwid will prevent some exceptions from being printed unless we use
-        # print a newline first.
-        print('')
-        raise
 
 
 if __name__ == '__main__':

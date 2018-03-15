@@ -1,12 +1,14 @@
 """HTTP request session."""
 
-import aiohttp
 import asyncio
 import collections
 import hashlib
 import logging
 import time
 import urllib.parse
+
+import aiohttp
+import async_timeout
 
 from hangups import exceptions
 
@@ -29,7 +31,8 @@ class Session(object):
 
     def __init__(self, cookies, proxy=None):
         self._proxy = proxy
-        self._session = aiohttp.ClientSession(cookies=cookies)
+        self._session = aiohttp.ClientSession(cookies=cookies,
+                                              conn_timeout=CONNECT_TIMEOUT)
         sapisid = cookies['SAPISID']
         self._authorization_headers = _get_authorization_headers(sapisid)
 
@@ -43,8 +46,7 @@ class Session(object):
         return {cookie.key: cookie.value
                 for cookie in self._session.cookie_jar}
 
-    @asyncio.coroutine
-    def fetch(self, method, url, params=None, headers=None, data=None):
+    async def fetch(self, method, url, params=None, headers=None, data=None):
         """Make an HTTP request.
 
         Automatically uses configured HTTP proxy, and adds Google authorization
@@ -68,16 +70,10 @@ class Session(object):
         logger.debug('Sending request %s %s:\n%r', method, url, data)
         for retry_num in range(MAX_RETRIES):
             try:
-                res = yield from asyncio.wait_for(
-                    self.fetch_raw(
-                        method, url, params=params, headers=headers, data=data,
-                    ),
-                    CONNECT_TIMEOUT)
-                try:
-                    body = yield from asyncio.wait_for(
-                        res.read(), REQUEST_TIMEOUT)
-                finally:
-                    res.release()
+                async with self.fetch_raw(method, url, params=params,
+                                          headers=headers, data=data) as res:
+                    async with async_timeout.timeout(REQUEST_TIMEOUT):
+                        body = await res.read()
                 logger.debug('Received response %d %s:\n%r',
                              res.status, res.reason, body)
             except asyncio.TimeoutError:
@@ -103,7 +99,6 @@ class Session(object):
 
         return FetchResponse(res.status, body)
 
-    @asyncio.coroutine
     def fetch_raw(self, method, url, params=None, headers=None, data=None):
         """Make an HTTP request using aiohttp directly.
 
@@ -118,24 +113,26 @@ class Session(object):
             data: (str): (optional) Request body data.
 
         Returns:
-            aiohttp.ClientResponse: HTTP response.
+            aiohttp._RequestContextManager: ContextManager for a HTTP response.
 
         Raises:
             See ``aiohttp.ClientSession.request``.
         """
         # Ensure we don't accidentally send the authorization header to a
         # non-Google domain:
-        assert urllib.parse.urlparse(url).hostname.endswith('.google.com')
+        if not urllib.parse.urlparse(url).hostname.endswith('.google.com'):
+            raise Exception('expected google.com domain')
+
         headers = headers or {}
         headers.update(self._authorization_headers)
-        return (yield from self._session.request(
+        return self._session.request(
             method, url, params=params, headers=headers, data=data,
             proxy=self._proxy
-        ))
+        )
 
-    def close(self):
+    async def close(self):
         """Close the underlying aiohttp.ClientSession."""
-        self._session.close()
+        await self._session.close()
 
 
 def _get_authorization_headers(sapisid_cookie):

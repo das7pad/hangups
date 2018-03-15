@@ -91,8 +91,8 @@ class User(object):
             logger.debug('Added %s name to User "%s": %s',
                          self.name_type.name.lower(), self.full_name, self)
 
-    @staticmethod
-    def from_entity(entity, self_user_id):
+    @classmethod
+    def from_entity(cls, entity, self_user_id):
         """Construct user from ``Entity`` message.
 
         Args:
@@ -105,14 +105,14 @@ class User(object):
         """
         user_id = UserID(chat_id=entity.id.chat_id,
                          gaia_id=entity.id.gaia_id)
-        return User(user_id, entity.properties.display_name,
-                    entity.properties.first_name,
-                    entity.properties.photo_url,
-                    entity.properties.email,
-                    (self_user_id == user_id) or (self_user_id is None))
+        return cls(user_id, entity.properties.display_name,
+                   entity.properties.first_name,
+                   entity.properties.photo_url,
+                   entity.properties.email,
+                   (self_user_id == user_id) or (self_user_id is None))
 
-    @staticmethod
-    def from_conv_part_data(conv_part_data, self_user_id):
+    @classmethod
+    def from_conv_part_data(cls, conv_part_data, self_user_id):
         """Construct user from ``ConversationParticipantData`` message.
 
         Args:
@@ -125,8 +125,8 @@ class User(object):
         """
         user_id = UserID(chat_id=conv_part_data.id.chat_id,
                          gaia_id=conv_part_data.id.gaia_id)
-        return User(user_id, conv_part_data.fallback_name, None, None, [],
-                    (self_user_id == user_id) or (self_user_id is None))
+        return cls(user_id, conv_part_data.fallback_name, None, None, [],
+                   (self_user_id == user_id) or (self_user_id is None))
 
 
 class UserList(object):
@@ -143,23 +143,28 @@ class UserList(object):
             used as a fallback in case any users are missing.
 
     """
+    user_cls = User
+    """A custom class used to create new User instances
+
+    May be a subclass of `hangups.user.User`
+    """
 
     def __init__(self, client, self_entity, entities, conv_parts):
         self._client = client
-        self._self_user = User.from_entity(self_entity, None)
+        self._self_user = self.user_cls.from_entity(self_entity, None)
         # {UserID: User}
         self._user_dict = {self._self_user.id_: self._self_user}
         # Add each entity as a new User.
         for entity in entities:
-            user_ = User.from_entity(entity, self._self_user.id_)
+            user_ = self.user_cls.from_entity(entity, self._self_user.id_)
             self._user_dict[user_.id_] = user_
         # Add each conversation participant as a new User if we didn't already
         # add them from an entity. These don't include a real first_name, so
         # only use them as a fallback.
         for participant in conv_parts:
             self._add_user_from_conv_part(participant)
-        logger.info('UserList initialized with %s user(s)',
-                    len(self._user_dict))
+        logger.info('%s initialized with %s user(s)',
+                    self.__class__.__name__, len(self._user_dict))
 
         self._client.on_state_update.add_observer(self._on_state_update)
 
@@ -178,9 +183,9 @@ class UserList(object):
         try:
             return self._user_dict[user_id]
         except KeyError:
-            logger.warning('UserList returning unknown User for UserID %s',
-                           user_id)
-            return User(user_id, None, None, None, [], False)
+            logger.warning('%s returning unknown User for UserID %s',
+                           self.__class__.__name__, user_id)
+            return self.user_cls(user_id, None, None, None, [], False)
 
     def get_all(self):
         """Get all known users.
@@ -192,7 +197,8 @@ class UserList(object):
 
     def _add_user_from_conv_part(self, conv_part):
         """Add or upgrade User from ConversationParticipantData."""
-        user_ = User.from_conv_part_data(conv_part, self._self_user.id_)
+        user_ = self.user_cls.from_conv_part_data(
+            conv_part, self._self_user.id_)
 
         existing = self._user_dict.get(user_.id_)
         if existing is None:

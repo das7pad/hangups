@@ -13,7 +13,9 @@ CONVERSATIONS_PER_REQUEST = 100
 MAX_CONVERSATION_PAGES = 100
 
 
-async def build_user_conversation_list(client):
+async def build_user_conversation_list(client,
+                                       user_list_cls=user.UserList,
+                                       conv_list_cls=None):
     """Build :class:`.UserList` and :class:`.ConversationList`.
 
     This method requests data necessary to build the list of conversations and
@@ -22,11 +24,15 @@ async def build_user_conversation_list(client):
 
     Args:
         client (Client): Connected client.
+        user_list_cls (user.UserList): a custom class for the user list
+        conv_list_cls (ConversationList): a custom class for the conv list
 
     Returns:
         (:class:`.UserList`, :class:`.ConversationList`):
             Tuple of built objects.
     """
+    conv_list_cls = conv_list_cls or ConversationList
+
     conv_states, sync_timestamp = await _sync_all_conversations(client)
 
     # Retrieve entities participating in all conversations.
@@ -71,10 +77,10 @@ async def build_user_conversation_list(client):
     )
     self_entity = get_self_info_response.self_entity
 
-    user_list = user.UserList(client, self_entity, required_entities,
+    user_list = user_list_cls(client, self_entity, required_entities,
                               conv_part_list)
-    conversation_list = ConversationList(client, conv_states,
-                                         user_list, sync_timestamp)
+    conversation_list = conv_list_cls(client, conv_states,
+                                      user_list, sync_timestamp)
     return (user_list, conversation_list)
 
 
@@ -150,7 +156,8 @@ class Conversation(object):
             if event_.event_type != hangouts_pb2.EVENT_TYPE_OBSERVED_EVENT:
                 self.add_event(event_)
 
-        self.on_event = event.Event('Conversation.on_event')
+        cls_name = self.__class__.__name__
+        self.on_event = event.Event('%s.on_event' % cls_name)
         """
         :class:`.Event` fired when an event occurs in this conversation.
 
@@ -158,7 +165,7 @@ class Conversation(object):
             conv_event: :class:`.ConversationEvent` that occurred.
         """
 
-        self.on_typing = event.Event('Conversation.on_typing')
+        self.on_typing = event.Event('%s.on_typing' % cls_name)
         """
         :class:`.Event` fired when a users starts or stops typing in this
         conversation.
@@ -169,7 +176,7 @@ class Conversation(object):
         """
 
         self.on_watermark_notification = event.Event(
-            'Conversation.on_watermark_notification'
+            '%s.on_watermark_notification' % cls_name
         )
         """
         :class:`.Event` fired when a watermark (read timestamp) is updated for
@@ -703,6 +710,11 @@ class ConversationList(object):
         sync_timestamp (datetime.datetime): The time when ``conv_states`` was
             synced.
     """
+    conv_cls = Conversation
+    """A custom class used to create new Conversation instances
+
+    May be a subclass of `hangups.conversation.Conversation`
+    """
 
     def __init__(self, client, conv_states, user_list, sync_timestamp):
         self._client = client  # Client
@@ -719,7 +731,8 @@ class ConversationList(object):
         self._client.on_connect.add_observer(self._sync)
         self._client.on_reconnect.add_observer(self._sync)
 
-        self.on_event = event.Event('ConversationList.on_event')
+        cls_name = self.__class__.__name__
+        self.on_event = event.Event('%s.on_event' % cls_name)
         """
         :class:`.Event` fired when an event occurs in any conversation.
 
@@ -727,7 +740,7 @@ class ConversationList(object):
             conv_event: :class:`ConversationEvent` that occurred.
         """
 
-        self.on_typing = event.Event('ConversationList.on_typing')
+        self.on_typing = event.Event('%s.on_typing' % cls_name)
         """
         :class:`.Event` fired when a users starts or stops typing in any
         conversation.
@@ -738,7 +751,7 @@ class ConversationList(object):
         """
 
         self.on_watermark_notification = event.Event(
-            'ConversationList.on_watermark_notification'
+            '%s.on_watermark_notification' % cls_name
         )
         """
         :class:`.Event` fired when a watermark (read timestamp) is updated for
@@ -791,8 +804,8 @@ class ConversationList(object):
         # pylint: disable=dangerous-default-value
         conv_id = conversation.conversation_id.id
         logger.debug('Adding new conversation: {}'.format(conv_id))
-        conv = Conversation(self._client, self._user_list, conversation,
-                            events)
+        conv = self.conv_cls(self._client, self._user_list, conversation,
+                             events)
         self._conv_dict[conv_id] = conv
         return conv
 

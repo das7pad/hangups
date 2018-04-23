@@ -166,6 +166,7 @@ class ChatUI(object):
             self._coroutine_queue.put(self._client.disconnect())
         else:
             return keys
+        return None
 
     def _show_menu(self):
         """Show the overlay menu."""
@@ -433,6 +434,7 @@ class ListBox(WidgetBase):
             super().keypress(size, 'page down')
         else:
             return key
+        return None
 
 
 class ConversationPickerWidget(WidgetBase):
@@ -468,6 +470,7 @@ class ReturnableEdit(urwid.Edit):
             self.set_edit_pos(pos)
         else:
             return super().keypress(size, key)
+        return None
 
 
 class StatusLineWidget(WidgetBase):
@@ -949,6 +952,7 @@ class TabbedWindowWidget(WidgetBase):
                 self._update_tabs()
         else:
             return key
+        return None
 
     def set_tab(self, widget, switch=False, title=None):
         """Add or modify a tab.

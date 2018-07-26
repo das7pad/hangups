@@ -6,9 +6,6 @@ import pytest
 from hangups import auth
 
 
-# pylint: disable=redefined-outer-name
-
-
 class FakeCredentialsPrompt(auth.CredentialsPrompt):
 
     def __init__(self):
@@ -27,8 +24,8 @@ class FakeCredentialsPrompt(auth.CredentialsPrompt):
         return '123456'
 
 
-@pytest.fixture
-def credentials_prompt():
+@pytest.fixture(name='credentials_prompt')
+def fixture_credentials_prompt():
     return FakeCredentialsPrompt()
 
 
@@ -45,8 +42,8 @@ class FakeRefreshTokenCache(auth.RefreshTokenCache):
         self._refresh_token = refresh_token
 
 
-@pytest.fixture
-def refresh_token_cache():
+@pytest.fixture(name='refresh_token_cache')
+def fixture_refresh_token_cache():
     return FakeRefreshTokenCache()
 
 

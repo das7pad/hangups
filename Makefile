@@ -15,7 +15,6 @@ venv-create:
 .PHONY: venv-deps
 venv-deps:
 	$(venv)/bin/pip install --upgrade pip
-	$(venv)/bin/pip install --editable .
 	$(venv)/bin/pip install --requirement requirements-dev.txt
 
 .PHONY: test-all

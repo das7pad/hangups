@@ -14,7 +14,6 @@ venv:
 .PHONY: venv-deps
 venv-deps: venv
 	@echo "Upgrading requirements"
-	@$(pip) install -q --upgrade pip
 	@$(pip) install -q --editable .
 	@$(pip) install -q --requirement requirements-dev.txt
 

@@ -171,6 +171,7 @@ class ChatUI:
             self._coroutine_queue.put(self._client.disconnect())
         else:
             return keys
+        return []
 
     def _show_menu(self):
         """Show the overlay menu."""
@@ -439,6 +440,9 @@ class ListBox(WidgetBase):
         else:
             return key
 
+        # return unhandled_key
+        return None
+
 
 class ConversationPickerWidget(WidgetBase):
     """ListBox widget for picking a conversation from a list."""
@@ -473,6 +477,9 @@ class ReturnableEdit(urwid.Edit):
             self.set_edit_pos(pos)
         else:
             return super().keypress(size, key)
+
+        # return unhandled_key
+        return None
 
 
 class StatusLineWidget(WidgetBase):
@@ -954,6 +961,9 @@ class TabbedWindowWidget(WidgetBase):
                 self._update_tabs()
         else:
             return key
+
+        # return unhandled_key
+        return None
 
     def set_tab(self, widget, switch=False, title=None):
         """Add or modify a tab.

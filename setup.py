@@ -38,7 +38,6 @@ install_requires = [
     'protobuf>=3.1.0,<3.2.0',
     'urwid>=1.3.1,<3',
     'MechanicalSoup>=0.6.0,<1.0.0',
-    'tld==0.7.10',
 ]
 
 
@@ -66,6 +65,11 @@ setup(
     ],
     packages=['hangups', 'hangups.ui'],
     python_requires=python_requires,
+    package_data={
+        'hangups': [
+            'dist/tld.names.regex',
+        ],
+    },
     install_requires=install_requires,
     entry_points={
         'console_scripts': [

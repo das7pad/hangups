@@ -66,7 +66,7 @@ class HangupsDisconnected(Exception):
     """Raised when hangups is disconnected."""
 
 
-class ChatUI(object):
+class ChatUI:
     """User interface for hangups."""
 
     def __init__(self, refresh_token_path, keybindings, palette,
@@ -171,7 +171,7 @@ class ChatUI(object):
             self._coroutine_queue.put(self._client.disconnect())
         else:
             return keys
-        return None
+        return []
 
     def _show_menu(self):
         """Show the overlay menu."""
@@ -285,18 +285,7 @@ class CoroutineQueue:
 
 class WidgetBase(urwid.WidgetWrap):
     """Base for UI Widgets
-
-    This class overrides the property definition for the method ``keypress`` in
-    ``urwid.WidgetWrap``. Using a method that overrides the property saves
-    many pylint suppressions.
-
-    Args:
-        target: urwid.Widget instance
     """
-    def keypress(self, size, key):
-        """forward the call"""
-        # pylint:disable=not-callable, useless-super-delegation
-        return super().keypress(size, key)
 
 
 class LoadingWidget(WidgetBase):
@@ -439,6 +428,8 @@ class ListBox(WidgetBase):
             super().keypress(size, 'page down')
         else:
             return key
+
+        # return unhandled_key
         return None
 
 
@@ -475,6 +466,8 @@ class ReturnableEdit(urwid.Edit):
             self.set_edit_pos(pos)
         else:
             return super().keypress(size, key)
+
+        # return unhandled_key
         return None
 
 
@@ -957,6 +950,8 @@ class TabbedWindowWidget(WidgetBase):
                 self._update_tabs()
         else:
             return key
+
+        # return unhandled_key
         return None
 
     def set_tab(self, widget, switch=False, title=None):

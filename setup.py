@@ -4,7 +4,14 @@ import sys
 
 # This is the minimum version which has support for `async def`/`await`/
 # `async with` syntax.
-python_requires='>=3.5.0'
+python_requires='>=3.5.3'
+
+# TODO: Switch to ReadTheDocs YAML config to get a newer Python
+if sys.version_info < (3, 5, 3) and not os.getenv('READTHEDOCS'):
+    # This is the minimum version which has support for `async def`/`await`/
+    # `async with` syntax.
+    raise RuntimeError("hangups requires Python 3.5.3+")
+
 
 # Find __version__ without import that requires dependencies to be installed:
 exec(open(os.path.join(
@@ -31,7 +38,6 @@ install_requires = [
     'protobuf>=3.1.0,<3.2.0',
     'urwid>=1.3.1,<3',
     'MechanicalSoup>=0.6.0,<1.0.0',
-    'tld==0.7.10',
 ]
 
 
@@ -59,6 +65,11 @@ setup(
     ],
     packages=['hangups', 'hangups.ui'],
     python_requires=python_requires,
+    package_data={
+        'hangups': [
+            'dist/tld.names.regex',
+        ],
+    },
     install_requires=install_requires,
     entry_points={
         'console_scripts': [

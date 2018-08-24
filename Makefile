@@ -1,3 +1,5 @@
+TLD_SRC = "https://publicsuffix.org/list/effective_tld_names.dat"
+
 ##############################################################################
 # General targets
 ##############################################################################
@@ -14,9 +16,7 @@ venv:
 .PHONY: venv-deps
 venv-deps: venv
 	@echo "Upgrading requirements"
-	@$(pip) install -q --upgrade pip
-	@$(pip) install -q --editable .
-	@$(pip) install -q --requirement requirements-dev.txt
+	$(pip) install --requirement requirements-dev.txt
 
 .PHONY: test-all
 test-all: style lint check test
@@ -26,7 +26,7 @@ style:
 	@if [ ! -d $(venv)/lib/*/site-packages/pycodestyle*/ ]; then \
 		make -s venv-deps; fi
 	@echo "Stylecheck: started"
-	@$(venv)/bin/pycodestyle hangups
+	$(venv)/bin/pycodestyle hangups
 	@echo "Stylecheck: no errors found"
 
 .PHONY: lint
@@ -34,7 +34,7 @@ lint:
 	@if [ ! -d $(venv)/lib/*/site-packages/pylint/ ]; then \
 		make -s venv-deps; fi
 	@echo "Lint: started"
-	@$(venv)/bin/pylint -s no -j 4 --reports=n hangups
+	$(venv)/bin/pylint -s no -j 4 --reports=n hangups
 	@echo "Lint: no errors found"
 
 .PHONY: check
@@ -42,7 +42,7 @@ check: venv
 	@if [ ! -d $(venv)/lib/*/site-packages/docutils/ ]; then \
 		make -s venv-deps; fi
 	@echo "Package check: started"
-	@$(venv)/bin/python setup.py check -q --metadata --restructuredtext --strict
+	$(venv)/bin/python setup.py check --metadata --restructuredtext --strict
 	@echo "Package check: no errors found"
 
 .PHONY: test
@@ -50,13 +50,32 @@ test:
 	@if [ ! -d $(venv)/lib/*/site-packages/_pytest/ ]; then \
 		make -s venv-deps; fi
 	@echo "Tests: started"
-	@$(venv)/bin/pytest -qq hangups
+	$(venv)/bin/pytest hangups
 	@echo "Test: all completed"
+
+.PHONY: tld
+tld:
+	@echo sed expressions: \
+			- drop empty lines \
+			- drop comments \
+			- drop exclusions \
+			- escape nun ascii character \
+			- replace wildcard domains
+	curl $(TLD_SRC) \
+		| sed \
+			-e '/^$$/d' \
+			-e '/\//d' \
+			-e '/!/d' \
+			-e 's/[^_a-zA-Z0-9]/\\&/g' \
+			-e 's/\\\*/\\w+/g' \
+        | tr '\n' '|' \
+        | sed '$$ s/.$$//' \
+		> hangups/dist/tld.names.regex
 
 .PHONY: clean
 clean:
 	@echo "Remove venv and compiled python files"
-	@rm -rf $(venv) `find . -name __pycache__`
+	rm -rf $(venv) `find . -name __pycache__`
 
 ##############################################################################
 # Protocol buffer targets

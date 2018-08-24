@@ -16,7 +16,7 @@ Notification = collections.namedtuple('Notification', [
 ])
 
 
-class Notifier(object):
+class Notifier:
     """Sends a desktop notification.
 
     This base class just discards the notification.

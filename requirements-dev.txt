@@ -34,7 +34,7 @@ py==1.7.0                 # via pytest
 pycodestyle==2.4.0
 pylint==2.1.1
 pytest==3.9.1
-readlike==0.1.2
+readlike==0.1.3
 reparser==1.4.3
 requests==2.20.0          # via mechanicalsoup
 six==1.11.0               # via astroid, httpretty, mechanicalsoup, more-itertools, pip-tools, protobuf, pytest

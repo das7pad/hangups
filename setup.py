@@ -32,7 +32,7 @@ install_requires = [
     'aiohttp>=1.3,<4',
     'async-timeout>=2,<4',
     'appdirs>=1.4,<1.5',
-    'readlike==0.1.2',
+    'readlike>=0.1.2,<0.2.0',
     'requests>=2.6.0,<3',  # uses semantic versioning (after 2.6)
     'ReParser==1.4.3',
     'protobuf>=3.1.0,<=3.6.1',

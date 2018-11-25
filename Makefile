@@ -53,6 +53,27 @@ test:
 	$(venv)/bin/pytest hangups
 	@echo "Test: all completed"
 
+# internal: check for `pip-compile` and ensure an existing cache directory
+.PHONY: .gen-deps
+.gen-deps: venv
+		@if [ ! -d $(venv)/lib/*/site-packages/piptools ]; then \
+			echo "Installing pip-tools" && $(pip) install pip-tools \
+			echo "Done"; \
+		fi
+
+.PHONY: gen-deps
+gen-deps: .gen-deps
+	@echo "Generating requirements-dev.txt"
+	@CUSTOM_COMPILE_COMMAND="make gen-deps" \
+		$(venv)/bin/pip-compile \
+			--upgrade \
+			--no-index \
+			--no-emit-trusted-host \
+			--output-file requirements-dev.txt \
+			requirements-dev.in
+	@sed -i 's#-e file://$(PWD)#-e .#' requirements-dev.txt
+	@echo "Done"
+
 .PHONY: tld
 tld:
 	@echo sed expressions: \

@@ -34,7 +34,7 @@ lint:
 	@if [ ! -d $(venv)/lib/*/site-packages/pylint/ ]; then \
 		make -s venv-deps; fi
 	@echo "Lint: started"
-	$(venv)/bin/pylint -s no -j 4 --reports=n hangups
+	$(venv)/bin/pylint -s no --reports=n hangups
 	@echo "Lint: no errors found"
 
 .PHONY: check

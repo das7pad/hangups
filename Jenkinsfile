@@ -127,6 +127,42 @@ pipeline {
                         }
                     }
                 }
+                stage('Python:3.5.6') {
+                    agent {
+                        docker {
+                            image 'python:3.5.6'
+                        }
+                    }
+                    stages {
+                        stage('Python:3.5.6 Info') {
+                            steps {
+                                sh 'curl -sS httpbin.org/ip'
+                                sh 'pwd'
+                            }
+                        }
+                        stage('Python:3.5.6 Checkout') {
+                            steps {
+                                checkout scm
+                                sh 'make clean'
+                            }
+                        }
+                        stage('Python:3.5.6 Install') {
+                            steps {
+                                sh 'make venv-deps'
+                            }
+                        }
+                        stage('Python:3.5.6 Test') {
+                            steps {
+                                sh 'make test-all'
+                            }
+                        }
+                        stage('Python:3.5.6 Cleanup') {
+                            steps {
+                                sh 'make clean'
+                            }
+                        }
+                    }
+                }
                 stage('Python:3.6.0') {
                     agent {
                         docker {
@@ -337,6 +373,150 @@ pipeline {
                             }
                         }
                         stage('Python:3.6.5 Cleanup') {
+                            steps {
+                                sh 'make clean'
+                            }
+                        }
+                    }
+                }
+                stage('Python:3.6.6') {
+                    agent {
+                        docker {
+                            image 'python:3.6.6'
+                        }
+                    }
+                    stages {
+                        stage('Python:3.6.6 Info') {
+                            steps {
+                                sh 'curl -sS httpbin.org/ip'
+                                sh 'pwd'
+                            }
+                        }
+                        stage('Python:3.6.6 Checkout') {
+                            steps {
+                                checkout scm
+                                sh 'make clean'
+                            }
+                        }
+                        stage('Python:3.6.6 Install') {
+                            steps {
+                                sh 'make venv-deps'
+                            }
+                        }
+                        stage('Python:3.6.6 Test') {
+                            steps {
+                                sh 'make test-all'
+                            }
+                        }
+                        stage('Python:3.6.6 Cleanup') {
+                            steps {
+                                sh 'make clean'
+                            }
+                        }
+                    }
+                }
+                stage('Python:3.6.7') {
+                    agent {
+                        docker {
+                            image 'python:3.6.7'
+                        }
+                    }
+                    stages {
+                        stage('Python:3.6.7 Info') {
+                            steps {
+                                sh 'curl -sS httpbin.org/ip'
+                                sh 'pwd'
+                            }
+                        }
+                        stage('Python:3.6.7 Checkout') {
+                            steps {
+                                checkout scm
+                                sh 'make clean'
+                            }
+                        }
+                        stage('Python:3.6.7 Install') {
+                            steps {
+                                sh 'make venv-deps'
+                            }
+                        }
+                        stage('Python:3.6.7 Test') {
+                            steps {
+                                sh 'make test-all'
+                            }
+                        }
+                        stage('Python:3.6.7 Cleanup') {
+                            steps {
+                                sh 'make clean'
+                            }
+                        }
+                    }
+                }
+                stage('Python:3.7.0') {
+                    agent {
+                        docker {
+                            image 'python:3.7.0'
+                        }
+                    }
+                    stages {
+                        stage('Python:3.7.0 Info') {
+                            steps {
+                                sh 'curl -sS httpbin.org/ip'
+                                sh 'pwd'
+                            }
+                        }
+                        stage('Python:3.7.0 Checkout') {
+                            steps {
+                                checkout scm
+                                sh 'make clean'
+                            }
+                        }
+                        stage('Python:3.7.0 Install') {
+                            steps {
+                                sh 'make venv-deps'
+                            }
+                        }
+                        stage('Python:3.7.0 Test') {
+                            steps {
+                                sh 'make test-all'
+                            }
+                        }
+                        stage('Python:3.7.0 Cleanup') {
+                            steps {
+                                sh 'make clean'
+                            }
+                        }
+                    }
+                }
+                stage('Python:3.7.1') {
+                    agent {
+                        docker {
+                            image 'python:3.7.1'
+                        }
+                    }
+                    stages {
+                        stage('Python:3.7.1 Info') {
+                            steps {
+                                sh 'curl -sS httpbin.org/ip'
+                                sh 'pwd'
+                            }
+                        }
+                        stage('Python:3.7.1 Checkout') {
+                            steps {
+                                checkout scm
+                                sh 'make clean'
+                            }
+                        }
+                        stage('Python:3.7.1 Install') {
+                            steps {
+                                sh 'make venv-deps'
+                            }
+                        }
+                        stage('Python:3.7.1 Test') {
+                            steps {
+                                sh 'make test-all'
+                            }
+                        }
+                        stage('Python:3.7.1 Cleanup') {
                             steps {
                                 sh 'make clean'
                             }

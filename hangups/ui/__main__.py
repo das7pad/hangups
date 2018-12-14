@@ -74,7 +74,7 @@ class ChatUI(object):
 
     def __init__(self, refresh_token_path, keybindings, palette,
                  palette_colors, datetimefmt, notifier_,
-                 discreet_notifications, manual_login):
+                 discreet_notifications):
         """Start the user interface."""
         self._keys = keybindings
         self._datetimefmt = datetimefmt
@@ -94,7 +94,7 @@ class ChatUI(object):
         # TODO Add urwid widget for getting auth.
         try:
             cookies = hangups.auth.get_auth_stdin(
-                refresh_token_path, manual_login
+                refresh_token_path
             )
         except hangups.GoogleAuthError as e:
             sys.exit('Login failed ({})'.format(e))
@@ -1113,7 +1113,7 @@ def main():
     general_group.add('-d', '--debug', action='store_true',
                       help='log detailed debugging messages')
     general_group.add('--manual-login', action='store_true',
-                      help='enable manual login method')
+                      help='DEPRECATED')
     general_group.add('--log', default=default_log_path, help='log file path')
     key_group = parser.add_argument_group('Keybindings')
     key_group.add('--key-next-tab', default='ctrl d',
@@ -1204,7 +1204,6 @@ def main():
         ChatUI(
             args.token_path, keybindings, col_scheme, palette_colors,
             datetimefmt, notifier_, args.discreet_notifications,
-            args.manual_login
         )
     except KeyboardInterrupt:
         sys.exit('Caught KeyboardInterrupt, exiting abnormally')

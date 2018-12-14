@@ -24,7 +24,6 @@ class Notifier:
 
     def send(self, notification):
         """Send a notification."""
-        pass
 
 
 class DefaultNotifier(Notifier):

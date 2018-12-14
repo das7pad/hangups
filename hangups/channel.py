@@ -37,10 +37,7 @@ MAX_READ_BYTES = 1024 * 1024
 
 
 class UnknownSIDError(exceptions.HangupsError):
-
     """hangups channel session expired."""
-
-    pass
 
 
 def _best_effort_decode(data_bytes):

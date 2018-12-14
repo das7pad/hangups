@@ -9,9 +9,8 @@ from hangups import hangouts_pb2
 
 
 # Common regex patterns
-BOUNDARY_CHARS = r'\s`!()\[\]{{}};:\'".,<>?«»“”‘’*_~='
-B_LEFT = r'(?:(?<=[' + BOUNDARY_CHARS + r'])|(?<=^))'  # Lookbehind
-B_RIGHT = r'(?:(?=[' + BOUNDARY_CHARS + r'])|(?=$))'   # Lookahead
+B_LEFT = r'(?:(?<=[^a-zA-Z0-9])|(?<=^))'  # Lookbehind
+B_RIGHT = r'(?:(?=[^a-zA-Z0-9])|(?=$))'   # Lookahead
 
 # Regex patterns used by token definitions
 MARKDOWN_END = r'(?<![\s\\]){tag}' + B_RIGHT

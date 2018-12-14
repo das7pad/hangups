@@ -238,6 +238,14 @@ class Conversation:
         return list(self._events)
 
     @property
+    def watermarks(self):
+        """Participant watermarks.
+
+        (dict of :class:`.UserID`, :class:`datetime.datetime`).
+        """
+        raise DeprecationWarning('watermark tracking is disabled')
+
+    @property
     def unread_events(self):
         """Loaded events which are unread sorted oldest to newest.
 
@@ -270,7 +278,8 @@ class Conversation:
         return status == hangouts_pb2.OFF_THE_RECORD_STATUS_OFF_THE_RECORD
 
     def _on_watermark_notification(self, notif):
-        """Update the conversations latest_read_timestamp."""
+        """Handle a watermark notification."""
+        # Update the conversation:
         if self.get_user(notif.user_id).is_self:
             logger.info('latest_read_timestamp for {} updated to {}'
                         .format(self.id_, notif.read_timestamp))
@@ -663,6 +672,15 @@ class Conversation:
                         )
                     )
                 )
+                # Certain fields of conversation_state are not populated by
+                # SyncRecentConversations. This is the case with the
+                # user_read_state fields which are all set to 0 but for the
+                # 'self' user. Update here so these fields get populated on the
+                # first call to GetConversation.
+                if res.conversation_state.HasField('conversation'):
+                    self.update_conversation(
+                        res.conversation_state.conversation
+                    )
                 conv_events = [self._wrap_event(event) for event
                                in res.conversation_state.event]
                 logger.info('Loaded {} events for conversation {}'

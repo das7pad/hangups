@@ -74,6 +74,10 @@ gen-deps: .gen-deps
 	@sed -i 's#-e file://$(PWD)#-e .#' requirements-dev.txt
 	@echo "Done"
 
+.PHONY: Jenkinsfile
+Jenkinsfile:
+	@$(python) tools/gen_Jenkinsfile.py
+
 .PHONY: tld
 tld:
 	@echo sed expressions: \
@@ -96,7 +100,7 @@ tld:
 .PHONY: clean
 clean:
 	@echo "Remove venv and compiled python files"
-	rm -rf $(venv) `find . -name __pycache__`
+	rm -rf $(venv) .cache `find . -name __pycache__`
 
 ##############################################################################
 # Protocol buffer targets

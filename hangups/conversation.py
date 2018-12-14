@@ -150,7 +150,6 @@ class Conversation:
         self._events = []  # [hangouts_pb2.Event]
         self._events_dict = {}  # {event_id: ConversationEvent}
         self._send_message_lock = asyncio.Lock()
-        self._watermarks = {}  # {UserID: datetime.datetime}
         for event_ in events:
             # Workaround to ignore observed events returned from
             # syncrecentconversations.
@@ -244,7 +243,7 @@ class Conversation:
 
         (dict of :class:`.UserID`, :class:`datetime.datetime`).
         """
-        return self._watermarks.copy()
+        raise DeprecationWarning('watermark tracking is disabled')
 
     @property
     def unread_events(self):
@@ -290,16 +289,6 @@ class Conversation:
             self_conversation_state.self_read_state.latest_read_timestamp = (
                 parsers.to_timestamp(notif.read_timestamp)
             )
-        # Update the participants' watermarks:
-        previous_timestamp = self._watermarks.get(
-            notif.user_id, datetime.datetime.min
-        )
-        if notif.read_timestamp > previous_timestamp:
-            logger.info(('latest_read_timestamp for conv {} participant {}' +
-                         ' updated to {}').format(self.id_,
-                                                  notif.user_id.chat_id,
-                                                  notif.read_timestamp))
-            self._watermarks[notif.user_id] = notif.read_timestamp
 
     def update_conversation(self, conversation):
         """Update the internal state of the conversation.
@@ -330,15 +319,6 @@ class Conversation:
         new_timestamp = new_state.self_read_state.latest_read_timestamp
         if new_timestamp == 0:
             new_state.self_read_state.latest_read_timestamp = old_timestamp
-
-        # user_read_state(s)
-        for new_entry in conversation.read_state:
-            tstamp = parsers.from_timestamp(new_entry.latest_read_timestamp)
-            if tstamp == 0:
-                continue
-            uid = parsers.from_participantid(new_entry.participant_id)
-            if uid not in self._watermarks or self._watermarks[uid] < tstamp:
-                self._watermarks[uid] = tstamp
 
     @staticmethod
     def _wrap_event(event_):

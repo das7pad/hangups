@@ -74,6 +74,10 @@ gen-deps: .gen-deps
 	@sed -i 's#-e file://$(PWD)#-e .#' requirements-dev.txt
 	@echo "Done"
 
+.PHONY: Jenkinsfile
+Jenkinsfile:
+	@$(python) tools/gen_Jenkinsfile.py
+
 .PHONY: tld
 tld:
 	@echo sed expressions: \

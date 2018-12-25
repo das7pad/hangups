@@ -33,6 +33,7 @@ install_requires = [
     'requests>=2.6.0,<3',  # uses semantic versioning (after 2.6)
     'ReParser==1.4.3',
     'protobuf>=3.1.0,<=3.6.1',
+    'tld==0.7.10',
 ]
 
 extras_require = {
@@ -69,11 +70,6 @@ setup(
     ],
     packages=['hangups', 'hangups.ui'],
     python_requires=python_requires,
-    package_data={
-        'hangups': [
-            'dist/tld.names.regex',
-        ],
-    },
     install_requires=install_requires,
     extras_require=extras_require,
     entry_points={

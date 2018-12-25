@@ -33,7 +33,6 @@ install_requires = [
     'requests>=2.6.0,<3',  # uses semantic versioning (after 2.6)
     'ReParser==1.4.3',
     'protobuf>=3.1.0,<=3.6.1',
-    'tld==0.7.10',
 ]
 
 extras_require = {

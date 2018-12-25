@@ -69,11 +69,6 @@ setup(
     ],
     packages=['hangups', 'hangups.ui'],
     python_requires=python_requires,
-    package_data={
-        'hangups': [
-            'dist/tld.names.regex',
-        ],
-    },
     install_requires=install_requires,
     extras_require=extras_require,
     entry_points={

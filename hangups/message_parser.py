@@ -1,6 +1,5 @@
 """Parser for message formatting markup."""
 
-import pathlib
 import re
 
 from reparser import Parser, Token, MatchGroup
@@ -23,34 +22,50 @@ html_img = r'(?i)<img\s+src=[\'"](?P<url>.+?)[\'"]\s*/?>'
 html_newline = r'(?i)<br\s*/?>'
 newline = r'\n|\r\n'
 
-
-def _get_tld_regex():
-    """get a regex for all public registered top level domains
-
-    Returns:
-        str: the regex
-    """
-    path = pathlib.Path(__file__).with_name('dist') / 'tld.names.regex'
-    raw = path.read_text()
-    return '(' + raw.strip().replace('\n', '|') + ')'
-
-
-# Based on URL regex pattern by John Gruber
-# (https://gist.github.com/gruber/8891611)
-# and a top level domain list
-_DOMAINS = _get_tld_regex()
-_BALANCED_PARENS = r'\([^\s()]*?\([^\s()]+\)[^\s()]*?\)'
-AUTO_LINK = (
-    (r'(?i)\b('
-     r'(?:https?:(?:/{1,3}|[a-z0-9%])|[a-z0-9.\-]+[.](?:domains)/)'
-     r'(?:[^\s()<>{}\[\]]+|balanced_parens|\([^\s]+?\))+'
-     r'(?:balanced_parens|\([^\s]+?\)|[^\s`!()\[\]{};:\'".,<>?«»“”‘’])|'
-     r'(?:(?<!@)[a-z0-9]+(?:[.\-][a-z0-9]+)*[.](?:domains)\b/?(?!@)))')
-    .replace('domains', _DOMAINS).replace('balanced_parens', _BALANCED_PARENS))
-# cleanup
-del _get_tld_regex
-del _DOMAINS
-del _BALANCED_PARENS
+# supported minimal url pattern:
+#   - http://domain.tld
+#   - https://domain.tld
+#   - sub.domain.tld
+#   - domain.tld/
+# custom ports are supported, however there is no port range check
+# parens in the path are matched balanced only:
+#   - me.you/(yeah) is matched as me.you/(yeah)
+#   - me.you/(nope)) is matched as me.you/(nope)
+#   this is useful when parsing a wrapped url: (inner.link/path_with_(parens))
+auto_link = r"""
+\b
+(
+    (?:
+        https?://
+        |
+        (?<!@)[a-zA-Z0-9\-]{1,63}\.
+        |
+        (?=\S+/)
+    )
+    (?:[a-zA-Z0-9\-]{1,63}\.)+
+    [a-zA-Z0-9\-]{2,63}
+    (?::\d+)?
+    \b(?!@)
+    (?:
+        /
+        (?:
+            \(
+                [^\s/()]*
+                \(
+                    [^\s/()]+
+                \)
+                [^\s/()]*
+            \)
+            |
+            \(
+                [^\s/()]+
+            \)
+            |
+            [^\s/(){};:!<>«»“”"'‘’`´]*
+        )*
+    )*
+)
+""".replace(' ', '').replace('\n', '')
 
 # Precompiled regex for matching protocol part of URL
 url_proto_regex = re.compile(r'(?i)^[a-z][\w-]+:/{1,3}')
@@ -77,7 +92,7 @@ def url_complete(url):
 class Tokens:
     """Groups of tokens to be used by ChatMessageParser"""
     basic = [
-        Token('link', AUTO_LINK, link_target=MatchGroup('start',
+        Token('link', auto_link, link_target=MatchGroup('start',
                                                         func=url_complete)),
         Token('br', newline, text='\n',
               segment_type=hangouts_pb2.SEGMENT_TYPE_LINE_BREAK)

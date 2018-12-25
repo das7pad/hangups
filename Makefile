@@ -1,5 +1,3 @@
-TLD_SRC = "https://publicsuffix.org/list/effective_tld_names.dat"
-
 ##############################################################################
 # General targets
 ##############################################################################
@@ -77,25 +75,6 @@ gen-deps: .gen-deps
 .PHONY: Jenkinsfile
 Jenkinsfile:
 	@$(python) tools/gen_Jenkinsfile.py
-
-.PHONY: tld
-tld:
-	@echo sed expressions: \
-			- drop empty lines \
-			- drop comments \
-			- drop exclusions \
-			- escape nun ascii character \
-			- replace wildcard domains
-	curl $(TLD_SRC) \
-		| sed \
-			-e '/^$$/d' \
-			-e '/\//d' \
-			-e '/!/d' \
-			-e 's/[^_a-zA-Z0-9]/\\&/g' \
-			-e 's/\\\*/\\w+/g' \
-        | tr '\n' '|' \
-        | sed '$$ s/.$$//' \
-		> hangups/dist/tld.names.regex
 
 .PHONY: clean
 clean:

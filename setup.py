@@ -28,7 +28,7 @@ with open('README.rst') as f:
 # hangups from breaking when new versions of dependencies are released,
 # especially for end-users (non-developers) who use pip to install hangups.
 install_requires = [
-    'aiohttp>=1.3,<4',
+    'aiohttp>=3.3,<4',
     'async-timeout>=2,<4',
     'requests>=2.6.0,<3',  # uses semantic versioning (after 2.6)
     'ReParser==1.4.3',

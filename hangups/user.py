@@ -34,8 +34,7 @@ class User:
                  is_self):
         # Handle full_name or first_name being None by creating an approximate
         # first_name from the full_name, or setting both to DEFAULT_NAME.
-        # Flag users with display name and first name 'unknown' as default.
-        if not full_name or (full_name == first_name == 'unknown'):
+        if not full_name:
             full_name = first_name = DEFAULT_NAME
             name_type = NameType.DEFAULT
         elif not any(c.isalpha() for c in full_name):

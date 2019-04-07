@@ -2,6 +2,7 @@
 
 
 import hangups.user
+import hangups.hangouts_pb2
 
 
 USER_ID = hangups.user.UserID(1, 1)
@@ -39,15 +40,22 @@ def test_default_type_detection_empty_1():
     assert user.name_type == hangups.user.NameType.DEFAULT
 
 
-def test_default_type_detection_201904():
+def test_default_type_detection_from_conv_part_data():
     # default user in 201904
-    user = hangups.user.User(
-        USER_ID,
-        full_name='unknown',
-        first_name='unknown',
-        photo_url='',
-        emails=[],
-        is_self=False,
+    conv_part_data = hangups.hangouts_pb2.ConversationParticipantData(
+        id=hangups.hangouts_pb2.ParticipantId(
+            chat_id='1',
+            gaia_id='1'
+        ),
+        fallback_name='unknown',
+        invitation_status=hangups.hangouts_pb2.INVITATION_STATUS_ACCEPTED,
+        participant_type=hangups.hangouts_pb2.PARTICIPANT_TYPE_GAIA,
+        new_invitation_status=hangups.hangouts_pb2.INVITATION_STATUS_ACCEPTED,
+    )
+
+    user = hangups.user.User.from_conv_part_data(
+        conv_part_data=conv_part_data,
+        self_user_id=USER_ID
     )
 
     assert user.full_name == hangups.user.DEFAULT_NAME
@@ -55,65 +63,39 @@ def test_default_type_detection_201904():
     assert user.name_type == hangups.user.NameType.DEFAULT
 
 
-def test_real_type_0():
+def test_real_type():
     # regular name
     user = hangups.user.User(
         USER_ID,
-        full_name='Joe',
-        first_name='Doe',
+        full_name='Joe Doe',
+        first_name='Joe',
         photo_url='',
         emails=[],
         is_self=False,
     )
 
-    assert user.full_name == 'Joe'
-    assert user.first_name == 'Doe'
+    assert user.full_name == 'Joe Doe'
+    assert user.first_name == 'Joe'
     assert user.name_type == hangups.user.NameType.REAL
 
 
-def test_real_type_1():
-    # both upper case
-    user = hangups.user.User(
-        USER_ID,
-        full_name='Unknown',
-        first_name='Unknown',
-        photo_url='',
-        emails=[],
-        is_self=False,
+def test_real_type_from_conv_part_data():
+    conv_part_data = hangups.hangouts_pb2.ConversationParticipantData(
+        id=hangups.hangouts_pb2.ParticipantId(
+            chat_id='1',
+            gaia_id='1'
+        ),
+        fallback_name='Joe Doe',
+        invitation_status=hangups.hangouts_pb2.INVITATION_STATUS_ACCEPTED,
+        participant_type=hangups.hangouts_pb2.PARTICIPANT_TYPE_GAIA,
+        new_invitation_status=hangups.hangouts_pb2.INVITATION_STATUS_ACCEPTED,
     )
 
-    assert user.full_name == 'Unknown'
-    assert user.first_name == 'Unknown'
-    assert user.name_type == hangups.user.NameType.REAL
-
-
-def test_real_type_2():
-    # display name lower case
-    user = hangups.user.User(
-        USER_ID,
-        full_name='unknown',
-        first_name='Unknown',
-        photo_url='',
-        emails=[],
-        is_self=False,
+    user = hangups.user.User.from_conv_part_data(
+        conv_part_data=conv_part_data,
+        self_user_id=USER_ID
     )
 
-    assert user.full_name == 'unknown'
-    assert user.first_name == 'Unknown'
-    assert user.name_type == hangups.user.NameType.REAL
-
-
-def test_real_type_3():
-    # first name lower case
-    user = hangups.user.User(
-        USER_ID,
-        full_name='Unknown',
-        first_name='unknown',
-        photo_url='',
-        emails=[],
-        is_self=False,
-    )
-
-    assert user.full_name == 'Unknown'
-    assert user.first_name == 'unknown'
+    assert user.full_name == 'Joe Doe'
+    assert user.first_name == 'Joe'
     assert user.name_type == hangups.user.NameType.REAL

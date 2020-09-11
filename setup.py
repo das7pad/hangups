@@ -32,7 +32,7 @@ install_requires = [
     'async-timeout>=2,<4',
     'requests>=2.6.0,<3',  # uses semantic versioning (after 2.6)
     'ReParser==1.4.3',
-    'protobuf>=3.1.0,<3.8',
+    'protobuf>=3.1.0,<3.12',
 ]
 
 extras_require = {
@@ -64,6 +64,8 @@ setup(
         'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Topic :: Communications :: Chat',
         'Environment :: Console :: Curses',
     ],

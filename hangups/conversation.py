@@ -635,7 +635,7 @@ class Conversation:
 
         Returns:
             List of :class:`.ConversationEvent` instances, ordered
-            newest-first.
+            oldest-first.
 
         Raises:
             KeyError: If ``event_id`` does not correspond to a known event.
@@ -651,7 +651,10 @@ class Conversation:
             # oldest event we have.
             conv_event = self.get_event(event_id)
             if self._events[0].id_ != event_id:
-                conv_events = self._events[self._events.index(conv_event) + 1:]
+                # Return at most max_events events preceding the event at this
+                # index.
+                index = self._events.index(conv_event)
+                conv_events = self._events[max(index - max_events, 0):index]
             else:
                 logger.info('Loading events for conversation {} before {}'
                             .format(self.id_, conv_event.timestamp))

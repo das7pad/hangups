@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 CONNECT_TIMEOUT = 30
 REQUEST_TIMEOUT = 30
 MAX_RETRIES = 3
-ORIGIN_URL = 'https://talkgadget.google.com'
+ORIGIN_URL = 'https://hangouts.google.com'
 
 FetchResponse = collections.namedtuple('FetchResponse', ['code', 'body'])
 
@@ -32,8 +32,8 @@ class Session:
     def __init__(self, cookies, proxy=None):
         self._proxy = proxy
         timeout = aiohttp.ClientTimeout(connect=CONNECT_TIMEOUT)
-        self._session = aiohttp.ClientSession(cookies=cookies,
-                                              timeout=timeout)
+        self._session = aiohttp.ClientSession(timeout=timeout)
+        self._cookies = cookies
         sapisid = cookies['SAPISID']
         self._authorization_headers = _get_authorization_headers(sapisid)
 
@@ -126,6 +126,13 @@ class Session:
 
         headers = headers or {}
         headers.update(self._authorization_headers)
+        # Workaround for #498: Serialize the cookie header manually to prevent
+        # aiohttp from quoting cookie values, which the server does not
+        # support.
+        headers['Cookie'] = '; '.join(
+            '{}={}'.format(name, value)
+            for name, value in sorted(self._cookies.items())
+        )
         return self._session.request(
             method, url, params=params, headers=headers, data=data,
             proxy=self._proxy
@@ -140,12 +147,12 @@ def _get_authorization_headers(sapisid_cookie):
     """Return authorization headers for API request."""
     # It doesn't seem to matter what the url and time are as long as they are
     # consistent.
-    time_msec = int(time.time() * 1000)
-    auth_string = '{} {} {}'.format(time_msec, sapisid_cookie, ORIGIN_URL)
+    time_sec = int(time.time())
+    auth_string = '{} {} {}'.format(time_sec, sapisid_cookie, ORIGIN_URL)
     auth_hash = hashlib.sha1(auth_string.encode()).hexdigest()
-    sapisidhash = 'SAPISIDHASH {}_{}'.format(time_msec, auth_hash)
+    sapisidhash = 'SAPISIDHASH {}_{}'.format(time_sec, auth_hash)
     return {
         'authorization': sapisidhash,
-        'x-origin': ORIGIN_URL,
+        'origin': ORIGIN_URL,
         'x-goog-authuser': '0',
     }

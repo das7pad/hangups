@@ -695,6 +695,7 @@ class ConversationEventListWalker(urwid.ListWalker):
     WATERMARK_FAST_SEARCH_ITEMS = 10
 
     def __init__(self, coroutine_queue, conversation, datetimefmt):
+        # pylint: disable=super-init-not-called
         self._coroutine_queue = coroutine_queue  # CoroutineQueue
         self._conversation = conversation  # Conversation
         self._is_scrolling = False  # Whether the user is trying to scroll up

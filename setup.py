@@ -32,7 +32,7 @@ install_requires = [
     'async-timeout>=2,<4',
     'requests>=2.6.0,<3',  # uses semantic versioning (after 2.6)
     'ReParser==1.4.3',
-    'protobuf>=3.1.0,<3.12',
+    'protobuf>=3.1.0,<3.14',
 ]
 
 extras_require = {

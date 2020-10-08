@@ -209,6 +209,7 @@ message PlusPhoto {
   enum MediaType {
     MEDIA_TYPE_UNKNOWN = 0;
     MEDIA_TYPE_PHOTO = 1;
+    MEDIA_TYPE_VIDEO = 2;
     MEDIA_TYPE_ANIMATED_PHOTO = 4;
   }
 
@@ -228,6 +229,8 @@ message PlusPhoto {
   optional MediaType media_type = 13;
   // List of stream ID parameters.
   repeated string stream_id = 14;
+  // URL of video
+  optional string video_url = 20;
 
 }
 

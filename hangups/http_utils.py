@@ -32,8 +32,10 @@ class Session:
     def __init__(self, cookies, proxy=None):
         self._proxy = proxy
         timeout = aiohttp.ClientTimeout(connect=CONNECT_TIMEOUT)
-        self._session = aiohttp.ClientSession(timeout=timeout)
-        self._cookies = cookies
+        jar = aiohttp.CookieJar(quote_cookie=False)
+        self._session = aiohttp.ClientSession(cookies=cookies,
+                                              cookie_jar=jar,
+                                              timeout=timeout)
         sapisid = cookies['SAPISID']
         self._authorization_headers = _get_authorization_headers(sapisid)
 
@@ -126,13 +128,6 @@ class Session:
 
         headers = headers or {}
         headers.update(self._authorization_headers)
-        # Workaround for #498: Serialize the cookie header manually to prevent
-        # aiohttp from quoting cookie values, which the server does not
-        # support.
-        headers['Cookie'] = '; '.join(
-            '{}={}'.format(name, value)
-            for name, value in sorted(self._cookies.items())
-        )
         return self._session.request(
             method, url, params=params, headers=headers, data=data,
             proxy=self._proxy
